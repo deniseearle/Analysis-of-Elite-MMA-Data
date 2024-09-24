@@ -1,0 +1,33 @@
+Fighter,Category,Indicator,Intra_Obs_1,Intra_Obs_2,Inter_Obs_1,Inter_Obs_2
+A,Strikes,Attempted,38,33,82,84
+A,Strikes,Landed,103,105,272,276
+A,Strikes,Significant,68,67,237,240
+A,Strikes,Punch ,45,43,167,169
+A,Strikes,Kick,16,16,59,60
+A,Strikes,Knee,6,7,0,0
+A,Strikes,Elbow,1,1,11,11
+A,Strikes,Head,29,30,166,170
+A,Strikes,Body,27,24,27,25
+A,Strikes,Legs,12,13,44,45
+A,Strikes,Standing ,45,42,161,163
+A,Strikes,Clinch,7,8,5,5
+A,Strikes,Ground,16,17,71,72
+B,Strikes,Attempted,15,13,103,107
+B,Strikes,Landed,93,91,111,114
+B,Strikes,Significant,70,70,94,96
+B,Strikes,Punch ,21,18,70,73
+B,Strikes,Kick,41,42,18,17
+B,Strikes,Knee,5,6,1,1
+B,Strikes,Elbow,3,4,5,5
+B,Strikes,Head,24,23,68,69
+B,Strikes,Body,21,20,18,19
+B,Strikes,Legs,26,27,8,8
+B,Strikes,Standing ,64,63,82,84
+B,Strikes,Clinch,6,7,8,8
+B,Strikes,Ground,0,0,4,4
+A,Takedown,Attempted,3,2,0,0
+A,Takedown,Landed,5,5,0,0
+B,Takedown,Attempted,2,1,0,0
+B,Takedown,Landed,1,1,0,0
+A,Submission,Attempted,3,3,0,0
+B,Submission,Attempted,4,4,4,4

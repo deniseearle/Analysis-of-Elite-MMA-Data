@@ -1,0 +1,1731 @@
+---
+title: "Examining the Key Technical Performance Indicators of Success in Elite Mixed Martial Arts by Weight Division and Fight Outcome"
+subtitle: "Supplementary Material for Reliability Study & Statistical Analysis"
+author:
+  - name: "Liam McGrath"
+    affiliation: "Centre for Performance Analysis, South East Technological University, Carlow, Ireland"
+  - name: "Denise Earle"
+    affiliation: "Centre for Performance Analysis, South East Technological University, Carlow, Ireland"
+  - name: "Jonathan Bradley"
+    affiliation: "Centre for Performance Analysis, South East Technological University, Carlow, Ireland"
+format: html
+prefer-html: true
+editor: visual
+toc: true
+toc-depth: 4
+number-sections: true
+embed-resources: true
+---
+
+```{r, warning = FALSE, message = FALSE, include = FALSE}
+library(tidyverse)
+library(kableExtra)
+library(gridExtra)
+library(rstatix) #contains get_summary_stats().
+library(car) #contains Levene's Test of Equal Variances.
+library(lsr) #contains cohensD function.
+library(coin) #contains wilcoxsign_test & wilcox_test (i.e. Mann-Whitney test).
+```
+
+```{r, warning = FALSE, message = FALSE, include = FALSE}
+mma <- read_csv("mma_data.csv") 
+
+mma$Division <- factor(mma$Division, levels = c("Featherweight", "Middleweight", "Heavyweight"))
+mma$Bout_Type <- factor(mma$Bout_Type)
+mma$Outcome <- factor(mma$Outcome)
+mma$Outcome_Detailed <- factor(mma$Outcome_Detailed)
+
+indicators <- c("Total Strikes Attempted", "Total Strikes Landed", "Sig. Strikes Landed", 
+               "Sig. Punch Strikes", "Sig. Kick Strikes", "Sig. Knee Strikes", "Sig. Elbow Strikes", 
+               "Sig. Head Strikes", "Sig. Body Strikes", "Sig. Leg Strikes", 
+               "Sig. Standing Strikes", "Sig. Clinch Strikes", "Sig. Ground Strikes", 
+               "Takedowns Attempted", "Takedowns Landed", "Submission Attempts")
+```
+
+# Study Sample
+
+The sample included UFC Bouts from 2020 to 2022 scheduled for five rounds across Featherweight (FTW - 145lbs, *n* = 13), Middleweight (MW - 185lbs, *n* = 16) and Heavyweight (HW - 206-265lbs, *n* = 18) divisions, totalling 47 bouts and 183 rounds. These included title fights (*n* = 14), which are all scheduled for five rounds, and other five round scheduled fights (*n* = 33). Fights lasting less than 30 seconds were removed, alongside those ending in no contests, or draws. This defined sample was selected to ensure the analysis was focusing on the very pinnacle of elite MMA athletes competing in the UFC.  
+
+# Operational Definitions
+
+The following indicators were collected and analysed for winners and losers:
+
+-   **Striking**:
+    -   **Total Strikes**: Any attempt to carry out an attack with striking techniques (punches, kicks, knees, elbows) on the opponent.
+    -   **Strikes Landed**: Any striking attempt which lands on the opponent, regardless of location or impact.
+    -   **Significant Strikes Landed**: All strikes at a distance and power strikes in the clinch and on the ground.
+-   **Strike Type**:
+    -   **Punch**: Any significant striking technique landed using punches.
+    -   **Kick**: Any significant striking technique landed using kicks.
+    -   **Knee**: Any significant striking technique landed using either knee.
+    -   **Elbow**: Any significant striking technique landed using either elbow.
+-   **Strike Location**:
+    -   **Head**: Any significant striking technique (punches, kicks, knees, elbows) on the opponent's head.
+    -   **Body**: Any significant striking technique (punches, kicks, knees, elbows) on the opponent's body.
+    -   **Leg**: Any significant striking technique (punches, kicks, knees, elbows) on the opponent's leg.
+-   **Strike Origin:**
+    -   **Standing Strikes**: Any significant striking technique on the opponent from a standing position.
+    -   **Clinch Strikes**: Any significant striking technique on the opponent from the clinch. The clinch is when fighters are standing up in the grappling phase, when either fighter has direct contact and/or control of the other.
+    -   **Ground Strikes**: Any significant striking technique on the opponent from the ground. This includes strikes from any ground position (mount, side control, guard, etc.).
+-   **Takedowns**:
+    -   **Total Takedown Actions**: A technique that involves off-balancing an opponent trying to bring him/her to the ground, typically with the attacker on top.
+    -   **Takedowns Landed**: Successful grounding of an opponent, with a level of control required by the TD initiator once the fighter is taken down.
+-   **Submissions**:
+    -   **Submission Attempts**: A technique when one fighter tries to lock up their opponent causing one of their body parts to be compressed or stretched. If successful, the fight will end via submission or a technical submission. It generally comprises of either chokes or locks.
+-   **Fight Outcome**:
+    -   **Outcome Detailed**: The method by which the fight ended with possible values of KO/TKO, Submission or Decision.
+    -   **Outcome**: The method by which the fight ended with possible values of Finish (which includes KO/TKO and Submission) and Decision.
+-   **Division**: the weight division of the fighters with possible values of Featherweight (145lbs), Middleweight (185lbs) and Heavyweight (206-265lbs).
+
+# Reliability Study
+
+Inter- and intra-rater reliability assessments were conducted with variance calculated using the percentage error method (\< 5% percentage error was deemed acceptable)^1^. The inter-reliability assessment conducted by the author (\> 4 years’ performance analysis experience) and a skilled analyst with extensive knowledge of MMA (\> 15 years coaching experience), reported an overall percentage error of 2.0%. The intra-reliability assessment was conducted by the author with a period of three weeks given between the initial observation and the test comparison to reduce the effects of memory bias^2^, resulting in a percentage error of 4.7%.
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+rel_study <- read_csv("reliability_data.csv")
+```
+
+## Inter-Reliability Study Results
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+inter_detailed <- rel_study %>%
+  select(Fighter, Category, Indicator, Inter_Obs_1, Inter_Obs_2) %>%
+  mutate(abs_diff = abs(Inter_Obs_1 - Inter_Obs_2),
+         mean_obs = (Inter_Obs_1 + Inter_Obs_2)/2,
+         pct_error_total = case_when(
+                              mean_obs > 0 ~ str_c(format(round((abs_diff/mean_obs)*100,1), nsmall = 1), "%"),
+                              mean_obs == 0 ~ str_c("0.0", "%")))
+
+knitr::kable(inter_detailed,
+      format = "html",
+      digits = c(0, 0, 0, 0, 0, 0, 1, 0),
+      align = "lllrrrrr",
+      col.names = c("Fighter", "Category", "Indicator", "Observation 1", "Observation 2", 
+                    "Absolute Differences", "Mean Observations", "% Error"),
+      caption = c("Results of Inter-Reliability Study by Indicator"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  kable_styling(full_width = F) 
+
+inter_overall <- inter_detailed %>%
+  summarise(obs_1_total = sum(Inter_Obs_1),
+            obs_2_total = sum(Inter_Obs_2),
+            abs_diff_total = sum(abs_diff),
+            mean_obs_total = (obs_1_total + obs_2_total)/2) %>%
+  mutate(pct_error_total = str_c(format(round((abs_diff_total/mean_obs_total)*100,1), nsmall = 1), "%"))
+
+knitr::kable(inter_overall,
+      format = "html",
+      digits = c(0, 0, 0, 1, 0),
+      align = "rrrrr",
+      col.names = c("Total Observation 1", "Total Observation 2", 
+                    "Total Absolute Differences", "Total Mean Observations", "% Error"),
+      caption = c("Overall Results of Inter-Reliability Test"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  kable_styling(full_width = F) 
+
+```
+
+## Intra-Reliability Study Results
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+intra_detailed <- rel_study %>%
+  select(Fighter:Intra_Obs_2) %>%
+  mutate(abs_diff = abs(Intra_Obs_1 - Intra_Obs_2),
+         mean_obs = (Intra_Obs_1 + Intra_Obs_2)/2,
+         pct_error_total = case_when(
+                              mean_obs > 0 ~ str_c(format(round((abs_diff/mean_obs)*100,1), nsmall = 1), "%"),
+                              mean_obs == 0 ~ str_c("0.0", "%")))
+
+knitr::kable(intra_detailed,
+      format = "html",
+      digits = c(0, 0, 0, 0, 0, 0, 1, 0),
+      align = "lllrrrrr",
+      col.names = c("Fighter", "Category", "Indicator", "Observation 1", "Observation 2", 
+                    "Absolute Differences", "Mean Observations", "% Error"),
+      caption = c("Results of Intra-Reliability Study by Indicator"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  kable_styling(full_width = F) 
+
+intra_overall <- intra_detailed %>%
+  summarise(obs_1_total = sum(Intra_Obs_1),
+            obs_2_total = sum(Intra_Obs_2),
+            abs_diff_total = sum(abs_diff),
+            mean_obs_total = (obs_1_total + obs_2_total)/2) %>%
+  mutate(pct_error_total = str_c(format(round((abs_diff_total/mean_obs_total)*100,1), nsmall = 1), "%"))
+
+knitr::kable(intra_overall,
+      format = "html",
+      digits = c(0, 0, 0, 1, 0),
+      align = "rrrrr",
+      col.names = c("Total Observation 1", "Total Observation 2", 
+                    "Total Absolute Differences", "Total Mean Observations", "% Error"),
+      caption = c("Overall Results of Intra-Reliability Test"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  kable_styling(full_width = F) 
+
+```
+
+# Statistical Analysis
+
+The data was tidied and transformed in Microsoft Excel, which included scaling the variables to actions per minute to ensure accurate comparisons across bouts^3^. Statistical analysis was conducted using R 4.4.0^4^ and RStudio^5^. Descriptive statistics are presented as mean ± SD across all bouts, winning and losing performances, by weight and based on the method of fight outcome. The Shapiro-Wilk test was used to assess normality of samples and Levene’s Test was used to assess equal variances in independent samples.
+
+Differences in indicators between winners and losers were examined using a paired samples *t* test for normally distributed samples, while the Wilcoxon signed rank test was used for non-normally distributed samples.
+
+Relative indicators were calculated by subtracting the loser's performance from the winner's performance. Differences in these relative indicators between fight outcomes were examined using an independent samples *t* test for normally distributed samples (with equal variances either assumed or not assumed depending on the results of Levene’s test), while the Mann-Whitney *U* test was used for non-normally distributed samples.
+
+The alpha level required for statistical significance was *α* = 0.05. The *p* values within each group of hypothesis tests were adjusted using the Bonferroni correction to ensure the cumulative Type 1 error remains below 0.05.
+
+Cohen’s *d* was used to estimate effect sizes for normally distributed samples, while the Wilcoxon Effect Size *r = z/√n* was used to estimate effect sizes for non-normally distributed samples, where *n* is the number of observations and *z* is the *z*-score returned from either the Wilcoxon signed rank test or Mann-Whitney *U* test^6^.
+
+Cohen's *d* can be interpreted as follows^7,8^:
+
+-   0.2 ≤ *d* \< 0.5 indicates a small effect.
+-   0.5 ≤ *d* \< 0.8 indicates a moderate effect.
+-   *d* ≥ 0.8 indicates a large effect.
+
+The Wilcoxon Effect Size *r* can be interpreted by taking the absolute value of *r* and using the following thresholds:
+
+-   0.1 ≤ \|*r*\| \< 0.3 indicates a small effect.
+-   0.3 ≤ \|*r*\| \< 0.5 indicates a moderate effect.
+-   \|*r*\| ≥ 0.5 indicates a large effect.
+
+# Descriptive Statistics of All Fighters, By Division & By Fight Outcome
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+mma_winner_stats <- select(mma, Division:Sub_Att_Win_PerMin) %>%
+  mutate(Win_Lose = "Winner") 
+
+colnames(mma_winner_stats) <- str_replace(colnames(mma_winner_stats), "_Win_PerMin", "")
+
+mma_loser_stats <- select(mma, Division:Year, Total_Strikes_Lose_PerMin:Sub_Att_Lose_PerMin)%>%
+  mutate(Win_Lose = "Loser")
+
+colnames(mma_loser_stats) <- str_replace(colnames(mma_loser_stats), "_Lose_PerMin", "")
+
+mma_tidy <- rbind(mma_winner_stats, mma_loser_stats) %>%
+  select(Division:Year, Win_Lose, Total_Strikes:Sub_Att)
+```
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+sum_stats_all <- mma_tidy %>%
+  select(Total_Strikes:Sub_Att) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+sum_stats_ftw <- mma_tidy %>% 
+  filter(Division == "Featherweight") %>%
+  select(Total_Strikes:Sub_Att) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+sum_stats_mw <- mma_tidy %>% 
+  filter(Division == "Middleweight") %>%
+  select(Total_Strikes:Sub_Att) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+sum_stats_hw <- mma_tidy %>% 
+  filter(Division == "Heavyweight") %>%
+  select(Total_Strikes:Sub_Att) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+sum_stats_finish <- mma_tidy %>% 
+  filter(Outcome == "Finish") %>%
+  select(Total_Strikes:Sub_Att) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+sum_stats_decision <- mma_tidy %>% 
+  filter(Outcome == "Decision") %>%
+  select(Total_Strikes:Sub_Att) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+sum_stats <- cbind(indicators, sum_stats_all, 
+                   sum_stats_ftw, sum_stats_mw, sum_stats_hw, 
+                   sum_stats_finish, sum_stats_decision)
+
+knitr::kable(sum_stats,
+      format = "html",
+      digits = c(0, 0, 0, 0, 0, 0, 0),
+      align = "lcccccc",
+      col.names = c("Indicator", "Overall<br>(n = 94)", 
+                    "FTW<br>(n = 26)", "MW<br>(n = 32)", "HW<br>(n = 36)", 
+                    "Finish<br>(n = 40)", "Decision<br>(n = 54)"),
+      caption = c("Descriptive Statistics for All Fighters, By Division & By Fight Outcome (n = # Fighters)"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  add_header_above(c(" " = 2, "Division" = 3, "Fight Outcome" = 2)) %>%
+  kable_styling(full_width = F) 
+
+```
+
+# Comparing Winning to Losing Performances
+
+## Descriptive Statistics
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+sum_stats_win <- mma %>% 
+  select(Total_Strikes_Win_PerMin:Sub_Att_Win_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2)),
+         Variable = str_replace_all(variable, "_Win_PerMin", "")) %>%
+  select(mean_sd) 
+  
+sum_stats_lose <- mma %>% 
+  select(Total_Strikes_Lose_PerMin:Sub_Att_Lose_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2)),
+         Variable = str_replace_all(variable, "_Lose_PerMin", "")) %>%
+  select(mean_sd) 
+
+sum_stats_win_lose <- cbind(indicators, sum_stats_win, sum_stats_lose)
+
+knitr::kable(sum_stats_win_lose,
+      format = "html",
+      digits = c(0, 0, 0),
+      align = "lcccccc",
+      col.names = c("Indicator", "Won<br>(n = 47)", "Lost<br>(n = 47)"),
+      caption = c("Descriptive Statistics for Winners & Losers<br>(n = # Fighters)"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  kable_styling(full_width = F) 
+```
+
+## Barchart with Error Bars
+
+The following barcharts with error bars compare the mean number of actions ± standard deviations for each indicator for winners and losers.
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE, dpi = 600, fig.height = 10, fig.width = 10}
+sum_stats_win_bar <- mma %>% 
+  select(Total_Strikes_Win_PerMin:Sub_Att_Win_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(win_lose = "Winner",
+         variable = str_replace(variable, "_Win_PerMin", ""))
+  
+sum_stats_lose_bar <- mma %>% 
+  select(Total_Strikes_Lose_PerMin:Sub_Att_Lose_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(win_lose = "Loser",
+         variable = str_replace(variable, "_Lose_PerMin", ""))
+
+sum_stats_wl_bar <- rbind(sum_stats_win_bar, sum_stats_lose_bar) %>%
+  select(-variable) %>%
+  mutate(variable = c("Total Strikes Attempted", "Total Strikes Landed", "Sig. Strikes Landed",
+                      "Sig. Punch Strikes", "Sig. Kick Strikes", 
+                      "Sig. Knee Strikes", "Sig. Elbow Strikes", "Sig. Head Strikes", "Sig. Body Strikes", "Sig. Leg Strikes",
+                      "Sig. Standing Strikes", "Sig. Clinch Strikes", "Sig. Ground Strikes",
+                      "Takedowns Attempted", "Takedowns Landed", "Submission Attempts",
+                      "Total Strikes Attempted", "Total Strikes Landed", "Sig. Strikes Landed",
+                      "Sig. Punch Strikes", "Sig. Kick Strikes", 
+                      "Sig. Knee Strikes", "Sig. Elbow Strikes", "Sig. Head Strikes", "Sig. Body Strikes", "Sig. Leg Strikes",
+                      "Sig. Standing Strikes", "Sig. Clinch Strikes", "Sig. Ground Strikes",
+                      "Takedowns Attempted", "Takedowns Landed", "Submission Attempts"))
+
+label_size <- 12
+
+p1 <- ggplot(data = filter(sum_stats_wl_bar, variable %in% c("Total Strikes Attempted", "Total Strikes Landed", "Sig. Strikes Landed")),
+             aes(x = mean, y = reorder(variable, mean), fill = win_lose)) +
+      geom_col(position = "dodge", show.legend = FALSE) +
+      geom_errorbar(aes(xmin = mean - sd, xmax = mean + sd), position = position_dodge(width = 0.9), width = 0.4, colour = "grey30") +
+      xlab("Number of Actions") +                #Using position = position_dodge(width = 0.9) aligns error bars correctly.
+      ylab("") +
+      #scale_fill_manual(values = c("#b8b8b8", "#707070"), guide = guide_legend(reverse = TRUE)) +   #Grey scale option.
+      scale_fill_manual(values = c("#0C7BDC", "#ff863f"), guide = guide_legend(reverse = TRUE)) +   #Putting "Winner" first in legend.
+      theme(legend.title = element_blank(),
+            axis.line.x.bottom = element_line(color = 'grey30'),
+            axis.line.y.left = element_line(color = 'grey30'),
+            axis.text.x = element_text(colour = "grey30"),
+            axis.text.y = element_text(colour = "grey30"),
+            axis.title.x = element_text(colour = "grey30", size = label_size),
+            axis.text = element_text(size = label_size),
+            legend.text = element_text(colour = "grey30"),
+            panel.background = element_blank(),
+            legend.position = "bottom")
+
+
+p2 <- ggplot(data = filter(sum_stats_wl_bar, variable %in% c("Sig. Punch Strikes", "Sig. Kick Strikes", "Sig. Knee Strikes", "Sig. Elbow Strikes")),
+             aes(x = mean, y = reorder(variable, mean), fill = win_lose)) +
+      geom_col(position = "dodge", show.legend = FALSE) +
+      geom_errorbar(aes(xmin = mean - sd, xmax = mean + sd), position = position_dodge(width = 0.9), width = 0.4, colour = "grey30") +
+      xlab("Number of Actions") +                #Using position = position_dodge(width = 0.9) aligns error bars correctly.
+      ylab("") +
+      #scale_fill_manual(values = c("#b8b8b8", "#707070"), guide = guide_legend(reverse = TRUE)) +   
+      scale_fill_manual(values = c("#0C7BDC", "#ff863f"), guide = guide_legend(reverse = TRUE)) +  
+      theme(legend.title = element_blank(),
+            axis.line.x.bottom = element_line(color = 'grey30'),
+            axis.line.y.left = element_line(color = 'grey30'),
+            axis.text.x = element_text(colour = "grey30"),
+            axis.text.y = element_text(colour = "grey30"),
+            axis.title.x = element_text(colour = "grey30", size = label_size),
+            axis.text = element_text(size = label_size),
+            legend.text = element_text(colour = "grey30"),
+            panel.background = element_blank(),
+            legend.position = "bottom")
+    
+p3 <- ggplot(data = filter(sum_stats_wl_bar, variable %in% c("Sig. Head Strikes", "Sig. Body Strikes", "Sig. Leg Strikes")),
+             aes(x = mean, y = reorder(variable, mean), fill = win_lose)) +
+      geom_col(position = "dodge", show.legend = FALSE) +
+      geom_errorbar(aes(xmin = mean - sd, xmax = mean + sd), position = position_dodge(width = 0.9), width = 0.4, colour = "grey30") +
+      xlab("Number of Actions") +                #Using position = position_dodge(width = 0.9) aligns error bars correctly.
+      ylab("") +
+      #scale_fill_manual(values = c("#b8b8b8", "#707070"), guide = guide_legend(reverse = TRUE)) +   
+      scale_fill_manual(values = c("#0C7BDC", "#ff863f"), guide = guide_legend(reverse = TRUE)) + 
+      theme(legend.title = element_blank(),
+            axis.line.x.bottom = element_line(color = 'grey30'),
+            axis.line.y.left = element_line(color = 'grey30'),
+            axis.text.x = element_text(colour = "grey30"),
+            axis.text.y = element_text(colour = "grey30"),
+            axis.title.x = element_text(colour = "grey30", size = label_size),
+            axis.text = element_text(size = label_size),
+            legend.text = element_text(colour = "grey30"),
+            panel.background = element_blank(),
+            legend.position = "bottom")
+
+p4 <- ggplot(data = filter(sum_stats_wl_bar, variable %in% c("Sig. Standing Strikes", "Sig. Clinch Strikes", "Sig. Ground Strikes")),
+             aes(x = mean, y = reorder(variable, mean), fill = win_lose)) +
+      geom_col(position = "dodge", show.legend = FALSE) +
+      geom_errorbar(aes(xmin = mean - sd, xmax = mean + sd), position = position_dodge(width = 0.9), width = 0.4, colour = "grey30") +
+      xlab("Number of Actions") +                #Using position = position_dodge(width = 0.9) aligns error bars correctly.
+      ylab("") +
+      #scale_fill_manual(values = c("#b8b8b8", "#707070"), guide = guide_legend(reverse = TRUE)) +   
+      scale_fill_manual(values = c("#0C7BDC", "#ff863f"), guide = guide_legend(reverse = TRUE)) +
+      theme(legend.title = element_blank(),
+            axis.line.x.bottom = element_line(color = 'grey30'),
+            axis.line.y.left = element_line(color = 'grey30'),
+            axis.text.x = element_text(colour = "grey30"),
+            axis.text.y = element_text(colour = "grey30"),
+            axis.title.x = element_text(colour = "grey30", size = label_size),
+            axis.text = element_text(size = label_size),
+            legend.text = element_text(colour = "grey30"),
+            panel.background = element_blank(),
+            legend.position = "bottom")
+
+p5 <- ggplot(data = filter(sum_stats_wl_bar, variable %in% c("Takedowns Attempted", "Takedowns Landed", "Submission Attempts")),
+             aes(x = mean, y = reorder(variable, mean), fill = win_lose)) +
+      geom_col(position = "dodge") +
+      geom_errorbar(aes(xmin = mean - sd, xmax = mean + sd), position = position_dodge(width = 0.9), width = 0.4, colour = "grey30") +
+      xlab("Number of Actions") +                #Using position = position_dodge(width = 0.9) aligns error bars correctly.
+      ylab("") +
+      #scale_fill_manual(values = c("#b8b8b8", "#707070"), guide = guide_legend(reverse = TRUE)) +   
+      scale_fill_manual(values = c("#0C7BDC", "#ff863f"), guide = guide_legend(reverse = TRUE)) +   
+      theme(legend.title = element_blank(),
+            axis.line.x.bottom = element_line(color = 'grey30'),
+            axis.line.y.left = element_line(color = 'grey30'),
+            axis.text.x = element_text(colour = "grey30"),
+            axis.text.y = element_text(colour = "grey30"),
+            axis.title.x = element_text(colour = "grey30", size = label_size),
+            axis.text = element_text(size = label_size),
+            legend.text = element_text(colour = "grey30", size = label_size),
+            panel.background = element_blank(),
+            legend.position = "bottom")
+
+pfinal <- grid.arrange(p1, p2, p3, p4, p5,
+  layout_matrix = rbind(c(1, 1, 2, 2),
+                        c(3, 3, 4, 4),
+                        c(NA, 5, 5, NA)))
+
+
+#ggsave("pfinal.jpeg", pfinal, dpi = 600)
+```
+
+## Hypothesis Testing
+
+### Shapiro-Wilk Test Results
+
+Paired differences between winners' and losers' performances were calculated for each indicator. The Shapiro-Wilk test was then applied to assess if the paired differences followed the Normal distribution.
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#Calculate paired differences
+
+mma_paired_diffs <- mma %>%
+  mutate(Total_Strikes_Diff = Total_Strikes_Win_PerMin - Total_Strikes_Lose_PerMin,
+         Landed_Diff = Landed_Win_PerMin - Landed_Lose_PerMin,
+         Significant_Diff = Significant_Win_PerMin - Significant_Lose_PerMin,
+         Punch_Diff = Punch_Win_PerMin - Punch_Lose_PerMin,
+         Kick_Diff = Kick_Win_PerMin - Kick_Lose_PerMin,
+         Knee_Diff = Knee_Win_PerMin - Knee_Lose_PerMin,
+         Elbow_Diff = Elbow_Win_PerMin - Elbow_Lose_PerMin,
+         Head_Diff = Head_Win_PerMin - Head_Lose_PerMin,
+         Body_Diff = Body_Win_PerMin - Body_Lose_PerMin,
+         Legs_Diff = Legs_Win_PerMin - Legs_Lose_PerMin,
+         Standing_Diff = Standing_Win_PerMin - Standing_Lose_PerMin, 
+         Clinch_Diff = Clinch_Win_PerMin - Clinch_Lose_PerMin,
+         Ground_Diff = Ground_Win_PerMin - Ground_Lose_PerMin,
+         Total_TD_Actions_Diff = Total_TD_Actions_Win_PerMin - Total_TD_Actions_Lose_PerMin,
+         TD_Landed_Diff = TD_Landed_Win_PerMin - TD_Landed_Lose_PerMin,
+         Sub_Att_Diff = Sub_Att_Win_PerMin - Sub_Att_Lose_PerMin) %>%
+  select(Outcome, Total_Strikes_Diff:Sub_Att_Diff)
+
+#Apply Shapiro-Wilk Normality test to each of the paired differences
+
+nor_tests <- lapply(select(mma_paired_diffs, -Outcome), shapiro.test)
+nor_res <- sapply(nor_tests, `[`, c("statistic", "p.value")) #Extracting the test statistic & p-value
+
+nor_p_values <- unlist(nor_res[2,]) #Convert list structure to vector
+
+nor_test_results <- tibble(
+  indicator = indicators,
+  p_val = round(nor_p_values,2)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Non-Normal",
+                            p_val > 0.05 ~ "Normal")) %>%
+  select(indicator, p_val, signif_p_val)
+
+knitr::kable(nor_test_results,
+      format = "html",
+      digits = c(0, 2, 0),
+      align = "lrlrl",
+      col.names = c("Indicator", "p", "Outcome"),
+      caption = c("Results of Shapiro-Wilk Tests"),
+      table.attr = 'data-quarto-disable-processing = "true"') %>% 
+  kable_styling(full_width = F)
+
+```
+
+### Paired *t* Test/Wilcoxon Signed Rank Test Results & Effect Sizes
+
+Depending on the results of the Shapiro-Wilk test:
+
+-   Either a paired samples *t* test or a Wilcoxon signed rank test was applied to test for significant differences between the paired samples for each indicator.
+-   Cohen's *d* or Wilcoxon's effect size *r* were used to measure effect size.
+
+All *p* values returned from the paired samples *t* test and Wilcoxon signed rank test were adjusted using the Bonferroni correction to ensure the cumulative Type 1 error remains below 0.05.
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#Carry out Paired T-test or Wilcoxon Signed Rank Test. 
+
+total_strikes_tres <- t.test(x = mma$Total_Strikes_Win_PerMin, y = mma$Total_Strikes_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+landed_tres <- wilcoxsign_test(mma$Landed_Win_PerMin ~ mma$Landed_Lose_PerMin, alternative = 'two.sided')
+significant_tres <- wilcoxsign_test(mma$Significant_Win_PerMin ~ mma$Significant_Lose_PerMin, alternative = 'two.sided')
+punch_tres <- wilcoxsign_test(mma$Punch_Win_PerMin ~ mma$Punch_Lose_PerMin, alternative = 'two.sided')
+kick_tres <- t.test(x = mma$Kick_Win_PerMin, y = mma$Kick_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+
+knee_tres <- wilcoxsign_test(mma$Knee_Win_PerMin ~ mma$Knee_Lose_PerMin, alternative = 'two.sided')
+elbow_tres <-wilcoxsign_test(mma$Elbow_Win_PerMin ~ mma$Elbow_Lose_PerMin, alternative = 'two.sided')
+head_tres <- t.test(x = mma$Head_Win_PerMin, y = mma$Head_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+body_tres <- wilcoxsign_test(mma$Body_Win_PerMin ~ mma$Body_Lose_PerMin, alternative = 'two.sided')
+legs_tres <- t.test(x = mma$Legs_Win_PerMin, y = mma$Legs_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+
+standing_tres <- wilcoxsign_test(mma$Standing_Win_PerMin ~ mma$Standing_Lose_PerMin, alternative = 'two.sided')
+clinch_tres <- wilcoxsign_test(mma$Clinch_Win_PerMin ~ mma$Clinch_Lose_PerMin, alternative = 'two.sided')
+ground_tres <- wilcoxsign_test(mma$Ground_Win_PerMin ~ mma$Ground_Lose_PerMin, alternative = 'two.sided')
+total_td_actions_tres <- t.test(x = mma$Total_TD_Actions_Win_PerMin, y = mma$Total_TD_Actions_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+td_landed_tres <- wilcoxsign_test(mma$TD_Landed_Win_PerMin ~ mma$TD_Landed_Lose_PerMin, alternative = 'two.sided')
+sub_att_tres <- wilcoxsign_test(mma$Sub_Att_Win_PerMin ~ mma$Sub_Att_Lose_PerMin, alternative = 'two.sided')
+
+
+tres_p_vals <- c(total_strikes_tres$p.value, pvalue(landed_tres), pvalue(significant_tres), pvalue(punch_tres), kick_tres$p.value,
+                pvalue(knee_tres), pvalue(elbow_tres), head_tres$p.value, pvalue(body_tres), legs_tres$p.value, 
+                pvalue(standing_tres), pvalue(clinch_tres), pvalue(ground_tres), total_td_actions_tres$p.value, pvalue(td_landed_tres), 
+                pvalue(sub_att_tres))
+
+names(tres_p_vals) <- indicators 
+
+#Adjusting p-values to account for multiple testing - will maintain a family-wise error of 0.05.
+tres_p_vals_adj <- p.adjust(tres_p_vals, method = "bonferroni")
+
+#Calculating effect size. 
+
+total_strikes_eff <- cohensD(x = mma$Total_Strikes_Win_PerMin, y = mma$Total_Strikes_Lose_PerMin, method = "paired")
+landed_eff <- statistic(landed_tres)/sqrt(nrow(mma)) #Extract Z score from Wilcoxon Signed Rank Test & divide by SQRT of number of paired samples.
+significant_eff <- statistic(significant_tres)/sqrt(nrow(mma))
+punch_eff <- statistic(punch_tres)/sqrt(nrow(mma))
+kick_eff <- cohensD(x = mma$Kick_Win_PerMin, y = mma$Kick_Lose_PerMin, method = "paired")
+
+knee_eff <- statistic(knee_tres)/sqrt(nrow(mma))
+elbow_eff <- statistic(elbow_tres)/sqrt(nrow(mma))
+head_eff <- cohensD(x = mma$Head_Win_PerMin, y = mma$Head_Lose_PerMin, method = "paired")
+body_eff <- statistic(body_tres)/sqrt(nrow(mma))
+legs_eff <- cohensD(x = mma$Legs_Win_PerMin, y = mma$Legs_Lose_PerMin, method = "paired")
+
+standing_eff <- statistic(standing_tres)/sqrt(nrow(mma))
+clinch_eff <- statistic(clinch_tres)/sqrt(nrow(mma))
+ground_eff <- statistic(ground_tres)/sqrt(nrow(mma))
+total_td_actions_eff <- cohensD(x = mma$Total_TD_Actions_Win_PerMin, y = mma$Total_TD_Actions_Lose_PerMin, method = "paired")
+td_landed_eff <- statistic(td_landed_tres)/sqrt(nrow(mma))
+sub_att_eff <- statistic(sub_att_tres)/sqrt(nrow(mma))
+
+eff <- c(total_strikes_eff, landed_eff, significant_eff, punch_eff, kick_eff,
+           knee_eff, elbow_eff, head_eff, body_eff, legs_eff, 
+           standing_eff, clinch_eff, ground_eff, total_td_actions_eff, td_landed_eff, sub_att_eff)
+
+names(eff) <- indicators
+
+#Combine all results from T-Tests, Wilcoxon Tests & Effect Sizes into a table
+
+tres_eff_results <- tibble(
+  indicator = names(tres_p_vals),
+  p_val = round(tres_p_vals,3),
+  adj_p_val = round(tres_p_vals_adj,3),
+  effect_size = round(eff, 3)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Significant",
+                            p_val > 0.05 ~ "Non-Significant"),
+         signif_adj_p_val = case_when(
+                            adj_p_val <= 0.05 ~ "Significant",
+                            adj_p_val > 0.05 ~ "Non-Significant"),
+         test = c("Paired T-test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Paired T-test",
+                  "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Paired T-test", "Wilcox Signed Rank Test", "Paired T-test",
+                  "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Paired T-test", "Wilcox Signed Rank Test",
+                  "Wilcox Signed Rank Test"),
+         effect_calc = c("d", "r", "r", "r", "d",
+                  "r", "r", "d", "r", "d",
+                  "r", "r", "r", "d", "r",
+                  "r")) %>%
+  select(indicator, test, p_val, signif_p_val, adj_p_val, signif_adj_p_val, effect_calc, effect_size)
+
+knitr::kable(tres_eff_results,
+      format = "html",
+      digits = c(0, 0, 3, 0, 3, 0, 0, 3),
+      align = "llrlrllr",
+      col.names = c("Indicator", "Test", "p", "Result", "p", "Result", "Effect Calc", "Effect Size"),
+      caption = c("Results of Paired Samples Testing for Winners vs Losers"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  add_header_above(c(" " = 2, "Non-adjusted" = 2, "Bonferroni adjusted" = 2, " " = 2)) %>%
+  kable_styling(full_width = F)
+
+```
+
+# Comparing Winning to Losing Performances by Fight Outcome
+
+## Descriptive Statistics
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+
+sum_stats_finish_win <- mma %>% 
+  filter(Outcome == "Finish") %>%
+  select(Total_Strikes_Win_PerMin:Sub_Att_Win_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2)),
+         Variable = str_replace_all(variable, "_Win_PerMin", "")) %>%
+  select(mean_sd) 
+  
+sum_stats_finish_lose <- mma %>% 
+  filter(Outcome == "Finish") %>%
+  select(Total_Strikes_Lose_PerMin:Sub_Att_Lose_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+sum_stats_decision_win <- mma %>% 
+  filter(Outcome == "Decision") %>%
+  select(Total_Strikes_Win_PerMin:Sub_Att_Win_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+  
+sum_stats_decision_lose <- mma %>% 
+  filter(Outcome == "Decision") %>%
+  select(Total_Strikes_Lose_PerMin:Sub_Att_Lose_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+sum_stats_win_lose <- cbind(indicators, sum_stats_finish_win, sum_stats_finish_lose, 
+                            sum_stats_decision_win, sum_stats_decision_lose)
+
+knitr::kable(sum_stats_win_lose,
+      format = "html",
+      digits = c(0, 0, 0, 0, 0),
+      align = "lcccccc",
+      col.names = c("Indicator",                   
+                    "Won<br/> (n = 20)", "Lost<br/> (n = 20)", 
+                    "Won<br/> (n = 27)", "Lost<br/> (n = 27)"),
+      caption = c("Descriptive Statistics for Winners & Losers & By Fight Outcome (n = # Fighters)"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  add_header_above(c(" ", "Outcome - Finish" = 2, "Outcome - Decision" = 2)) %>%
+  kable_styling(full_width = F) 
+```
+
+## Hypothesis Testing
+
+For each fight outcome, paired differences between winners' and losers' performances were calculated for each indicator. The Shapiro-Wilk test was then applied to assess if the paired differences followed the Normal distribution.
+
+Depending on the results of the Shapiro-Wilk test:
+
+-   Either a paired samples *t* test or a Wilcoxon signed rank test was applied to test for significant differences between the paired samples for each indicator.
+-   Cohen's *d* or Wilcoxon's effect size *r* were used to measure effect size.
+
+All *p* values returned from the paired samples *t* test and Wilcoxon signed rank test were adjusted using the Bonferroni correction to ensure the cumulative Type 1 error remains below 0.05.
+
+### Finish Outcomes
+
+#### Shapiro-Wilk Test Results
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#Calculate paired differences
+
+mma_paired_diffs_fin <- mma %>%
+  filter(Outcome == "Finish") %>%
+  mutate(Total_Strikes_Diff = Total_Strikes_Win_PerMin - Total_Strikes_Lose_PerMin,
+         Landed_Diff = Landed_Win_PerMin - Landed_Lose_PerMin,
+         Significant_Diff = Significant_Win_PerMin - Significant_Lose_PerMin,
+         Punch_Diff = Punch_Win_PerMin - Punch_Lose_PerMin,
+         Kick_Diff = Kick_Win_PerMin - Kick_Lose_PerMin,
+         Knee_Diff = Knee_Win_PerMin - Knee_Lose_PerMin,
+         Elbow_Diff = Elbow_Win_PerMin - Elbow_Lose_PerMin,
+         Head_Diff = Head_Win_PerMin - Head_Lose_PerMin,
+         Body_Diff = Body_Win_PerMin - Body_Lose_PerMin,
+         Legs_Diff = Legs_Win_PerMin - Legs_Lose_PerMin,
+         Standing_Diff = Standing_Win_PerMin - Standing_Lose_PerMin, 
+         Clinch_Diff = Clinch_Win_PerMin - Clinch_Lose_PerMin,
+         Ground_Diff = Ground_Win_PerMin - Ground_Lose_PerMin,
+         Total_TD_Actions_Diff = Total_TD_Actions_Win_PerMin - Total_TD_Actions_Lose_PerMin,
+         TD_Landed_Diff = TD_Landed_Win_PerMin - TD_Landed_Lose_PerMin,
+         Sub_Att_Diff = Sub_Att_Win_PerMin - Sub_Att_Lose_PerMin) %>%
+  select(Total_Strikes_Diff:Sub_Att_Diff)
+
+#Apply Shapiro-Wilk Normality test to each of the paired differences
+nor_tests_fin <- lapply(mma_paired_diffs_fin, shapiro.test)
+nor_res_fin <- sapply(nor_tests_fin, `[`, c("statistic", "p.value")) #Extracting the test statistic & p-value
+
+nor_p_values_fin <- unlist(nor_res_fin[2,]) #Convert list structure to vector
+
+nor_test_results_fin <- tibble(
+  indicator = indicators,
+  p_val = round(nor_p_values_fin,2)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Non-Normal",
+                            p_val > 0.05 ~ "Normal")) %>%
+  select(indicator, p_val, signif_p_val)
+
+knitr::kable(nor_test_results_fin,
+      format = "html",
+      digits = c(0, 2, 0),
+      align = "lrlrl",
+      col.names = c("Indicator", "p", "Outcome"),
+      caption = c("Results of Shapiro-Wilk Normality Tests for Finish Outcomes"),
+      table.attr = 'data-quarto-disable-processing = "true"') %>% 
+  kable_styling(full_width = F)
+
+```
+
+#### Paired *t* Test/Wilcoxon Signed Rank Test Results & Effect Sizes
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+
+mma_fin <- mma %>%
+  filter(Outcome == "Finish")
+
+#Carry out Paired T-test or Wilcoxon Signed Rank Test. 
+
+total_strikes_tres_fin <- t.test(x = mma_fin$Total_Strikes_Win_PerMin, y = mma_fin$Total_Strikes_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+landed_tres_fin <- t.test(x = mma_fin$Landed_Win_PerMin, y = mma_fin$Landed_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+significant_tres_fin <- t.test(x = mma_fin$Significant_Win_PerMin, y = mma_fin$Significant_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+punch_tres_fin <- t.test(x = mma_fin$Punch_Win_PerMin, y = mma_fin$Punch_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+kick_tres_fin <- t.test(x = mma_fin$Kick_Win_PerMin, y = mma_fin$Kick_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+
+knee_tres_fin <- wilcoxsign_test(mma_fin$Knee_Win_PerMin ~ mma_fin$Knee_Lose_PerMin, alternative = 'two.sided')
+elbow_tres_fin <- wilcoxsign_test(mma_fin$Elbow_Win_PerMin ~ mma_fin$Elbow_Lose_PerMin, alternative = 'two.sided')
+head_tres_fin <- t.test(x = mma_fin$Head_Win_PerMin, y = mma_fin$Head_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+body_tres_fin <- wilcoxsign_test(mma_fin$Body_Win_PerMin ~ mma_fin$Body_Lose_PerMin, alternative = 'two.sided')
+legs_tres_fin <- t.test(x = mma_fin$Legs_Win_PerMin, y = mma_fin$Legs_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+
+standing_tres_fin <- t.test(x = mma_fin$Standing_Win_PerMin, y = mma_fin$Standing_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+clinch_tres_fin <- wilcoxsign_test(mma_fin$Clinch_Win_PerMin ~ mma_fin$Clinch_Lose_PerMin, alternative = 'two.sided')
+ground_tres_fin <- wilcoxsign_test(mma_fin$Ground_Win_PerMin ~ mma_fin$Ground_Lose_PerMin, alternative = 'two.sided')
+total_td_actions_tres_fin <- t.test(x = mma_fin$Total_TD_Actions_Win_PerMin, y = mma_fin$Total_TD_Actions_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+td_landed_tres_fin <- wilcoxsign_test(mma_fin$TD_Landed_Win_PerMin ~ mma_fin$TD_Landed_Lose_PerMin, alternative = 'two.sided')
+sub_att_tres_fin <- wilcoxsign_test(mma_fin$Sub_Att_Win_PerMin ~ mma_fin$Sub_Att_Lose_PerMin, alternative = 'two.sided')
+
+tres_p_vals_fin <- c(total_strikes_tres_fin$p.value, landed_tres_fin$p.value, significant_tres_fin$p.value, punch_tres_fin$p.value, kick_tres_fin$p.value,
+                pvalue(knee_tres_fin), pvalue(elbow_tres_fin), head_tres_fin$p.value, pvalue(body_tres_fin), legs_tres_fin$p.value, 
+                standing_tres_fin$p.value, pvalue(clinch_tres_fin), pvalue(ground_tres_fin), total_td_actions_tres_fin$p.value, pvalue(td_landed_tres_fin), 
+                pvalue(sub_att_tres_fin))
+
+names(tres_p_vals_fin) <- indicators
+ 
+tres_p_vals_adj_fin <- p.adjust(tres_p_vals_fin, method = "bonferroni")
+
+#Calculating effect size. 
+
+total_strikes_eff_fin <- cohensD(x = mma_fin$Total_Strikes_Win_PerMin, y = mma_fin$Total_Strikes_Lose_PerMin, method = "paired")
+landed_eff_fin <- cohensD(x = mma_fin$Landed_Win_PerMin, y = mma_fin$Landed_Lose_PerMin, method = "paired")
+significant_eff_fin <- cohensD(x = mma_fin$Significant_Win_PerMin, y = mma_fin$Significant_Lose_PerMin, method = "paired")
+punch_eff_fin <- cohensD(x = mma_fin$Punch_Win_PerMin, y = mma_fin$Punch_Lose_PerMin, method = "paired")
+kick_eff_fin <- cohensD(x = mma_fin$Kick_Win_PerMin, y = mma_fin$Kick_Lose_PerMin, method = "paired")
+
+knee_eff_fin <- statistic(knee_tres_fin)/sqrt(nrow(mma_fin))
+elbow_eff_fin <- statistic(elbow_tres_fin)/sqrt(nrow(mma_fin))
+head_eff_fin <- cohensD(x = mma_fin$Head_Win_PerMin, y = mma_fin$Head_Lose_PerMin, method = "paired")
+body_eff_fin <- statistic(body_tres_fin)/sqrt(nrow(mma_fin))
+legs_eff_fin <- cohensD(x = mma_fin$Legs_Win_PerMin, y = mma_fin$Legs_Lose_PerMin, method = "paired")
+
+standing_eff_fin <- cohensD(x = mma_fin$Standing_Win_PerMin, y = mma_fin$Standing_Lose_PerMin, method = "paired")
+clinch_eff_fin <- statistic(clinch_tres_fin)/sqrt(nrow(mma_fin))
+ground_eff_fin <- statistic(ground_tres_fin)/sqrt(nrow(mma_fin))
+total_td_actions_eff_fin <- cohensD(x = mma_fin$Total_TD_Actions_Win_PerMin, y = mma_fin$Total_TD_Actions_Lose_PerMin, method = "paired")
+td_landed_eff_fin <- statistic(td_landed_tres_fin)/sqrt(nrow(mma_fin))
+sub_att_eff_fin <- statistic(sub_att_tres_fin)/sqrt(nrow(mma_fin))
+
+
+eff_fin <- c(total_strikes_eff_fin, landed_eff_fin, significant_eff_fin, punch_eff_fin, kick_eff_fin,
+           knee_eff_fin, elbow_eff_fin, head_eff_fin, body_eff_fin, legs_eff_fin, 
+           standing_eff_fin, clinch_eff_fin, ground_eff_fin, total_td_actions_eff_fin, td_landed_eff_fin, 
+           sub_att_eff_fin)
+
+names(eff_fin) <- indicators
+
+#Combine all results from T-Tests, Wilcoxon Tests & Effect Sizes into a table
+
+tres_eff_results_fin <- tibble(
+  indicator = indicators,
+  p_val = round(tres_p_vals_fin,3),
+  adj_p_val = round(tres_p_vals_adj_fin,3),
+  effect_size = round(eff_fin, 3)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Significant",
+                            p_val > 0.05 ~ "Non-Significant"),
+         signif_adj_p_val = case_when(
+                            adj_p_val <= 0.05 ~ "Significant",
+                            adj_p_val > 0.05 ~ "Non-Significant"),
+         test = c("Paired T-test", "Paired T-test", "Paired T-test", "Paired T-test", "Paired T-test",
+                  "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Paired T-test", "Wilcox Signed Rank Test", "Paired T-test",
+                  "Paired T-test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Paired T-test", "Wilcox Signed Rank Test",
+                  "Wilcox Signed Rank Test"),
+         effect_calc = c("d", "d", "d", "d", "d",
+                  "r", "r", "d", "r", "d",
+                  "d", "r", "r", "d", "r",
+                  "r")) %>%
+  select(indicator, test, p_val, signif_p_val, adj_p_val, signif_adj_p_val, effect_calc, effect_size)
+
+knitr::kable(tres_eff_results_fin,
+      format = "html",
+      digits = c(0, 0, 3, 0, 3, 0, 0, 3),
+      align = "llrlrllr",
+      col.names = c("Indicator", "Test", "p", "Result", "p", "Result", "Effect Calc", "Effect Size"),
+      caption = c("Results of Paired Samples Testing for Finish Outcomes"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  add_header_above(c(" " = 2, "Non-adjusted" = 2, "Bonferroni adjusted" = 2, " " = 2)) %>%
+  kable_styling(full_width = F)
+
+
+```
+
+### Decision Outcomes
+
+#### Shapiro-Wilk Test Results
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#Calculate paired differences
+
+mma_paired_diffs_dec <- mma %>%
+  filter(Outcome == "Decision") %>%
+  mutate(Total_Strikes_Diff = Total_Strikes_Win_PerMin - Total_Strikes_Lose_PerMin,
+         Landed_Diff = Landed_Win_PerMin - Landed_Lose_PerMin,
+         Significant_Diff = Significant_Win_PerMin - Significant_Lose_PerMin,
+         Punch_Diff = Punch_Win_PerMin - Punch_Lose_PerMin,
+         Kick_Diff = Kick_Win_PerMin - Kick_Lose_PerMin,
+         Knee_Diff = Knee_Win_PerMin - Knee_Lose_PerMin,
+         Elbow_Diff = Elbow_Win_PerMin - Elbow_Lose_PerMin,
+         Head_Diff = Head_Win_PerMin - Head_Lose_PerMin,
+         Body_Diff = Body_Win_PerMin - Body_Lose_PerMin,
+         Legs_Diff = Legs_Win_PerMin - Legs_Lose_PerMin,
+         Standing_Diff = Standing_Win_PerMin - Standing_Lose_PerMin,
+         Clinch_Diff = Clinch_Win_PerMin - Clinch_Lose_PerMin,
+         Ground_Diff = Ground_Win_PerMin - Ground_Lose_PerMin,
+         Total_TD_Actions_Diff = Total_TD_Actions_Win_PerMin - Total_TD_Actions_Lose_PerMin,
+         TD_Landed_Diff = TD_Landed_Win_PerMin - TD_Landed_Lose_PerMin,
+         Sub_Att_Diff = Sub_Att_Win_PerMin - Sub_Att_Lose_PerMin) %>%
+  select(Total_Strikes_Diff:Sub_Att_Diff)
+
+#Apply Shapiro-Wilk Normality test to each of the paired differences
+nor_tests_dec <- lapply(mma_paired_diffs_dec, shapiro.test)
+nor_res_dec <- sapply(nor_tests_dec, `[`, c("statistic", "p.value")) #Extracting the test statistic & p-value
+
+nor_p_values_dec <- unlist(nor_res_dec[2,]) #Convert list structure to vector
+
+nor_test_results_dec <- tibble(
+  indicator = indicators,
+  p_val = round(nor_p_values_dec,2)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Non-Normal",
+                            p_val > 0.05 ~ "Normal")) %>%
+  select(indicator, p_val, signif_p_val)
+
+knitr::kable(nor_test_results_dec,
+      format = "html",
+      digits = c(0, 2, 0),
+      align = "lrlrl",
+      col.names = c("Indictor", "p", "Outcome"),
+      caption = c("Results of Shapiro-Wilk Normality Tests for Decision Outcomes"),
+      table.attr = 'data-quarto-disable-processing = "true"') %>%
+  kable_styling(full_width = F)
+
+```
+
+#### Paired *t* Test/Wilcoxon Signed Rank Test Results & Effect Sizes
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+
+mma_dec <- mma %>%
+  filter(Outcome == "Decision")
+
+#Carry out Paired T-test or Wilcoxon Signed Rank Test. 
+
+total_strikes_tres_dec <- wilcoxsign_test(mma_dec$Total_Strikes_Win_PerMin ~ mma_dec$Total_Strikes_Lose_PerMin, alternative = 'two.sided')
+landed_tres_dec <- wilcoxsign_test(mma_dec$Landed_Win_PerMin ~ mma_dec$Landed_Lose_PerMin, alternative = 'two.sided')
+significant_tres_dec <- wilcoxsign_test(mma_dec$Significant_Win_PerMin ~ mma_dec$Significant_Lose_PerMin, alternative = 'two.sided')
+punch_tres_dec <- wilcoxsign_test(mma_dec$Punch_Win_PerMin ~ mma_dec$Punch_Lose_PerMin, alternative = 'two.sided')
+kick_tres_dec <- t.test(x = mma_dec$Kick_Win_PerMin, y = mma_dec$Kick_Lose_PerMin, alternative = 'two.sided')
+
+knee_tres_dec <- wilcoxsign_test(mma_dec$Knee_Win_PerMin ~ mma_dec$Knee_Lose_PerMin, alternative = 'two.sided')
+elbow_tres_dec <- wilcoxsign_test(mma_dec$Elbow_Win_PerMin ~ mma_dec$Elbow_Lose_PerMin, alternative = 'two.sided')
+head_tres_dec <- wilcoxsign_test(mma_dec$Head_Win_PerMin ~ mma_dec$Head_Lose_PerMin, alternative = 'two.sided')
+body_tres_dec <- wilcoxsign_test(mma_dec$Body_Win_PerMin ~ mma_dec$Body_Lose_PerMin, alternative = 'two.sided')
+legs_tres_dec <- t.test(x = mma_dec$Legs_Win_PerMin, y = mma_dec$Legs_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+
+standing_tres_dec <- wilcoxsign_test(mma_dec$Standing_Win_PerMin ~ mma_dec$Standing_Lose_PerMin, alternative = 'two.sided')
+clinch_tres_dec <- t.test(x = mma_dec$Clinch_Win_PerMin, y = mma_dec$Clinch_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+ground_tres_dec <- wilcoxsign_test(mma_dec$Ground_Win_PerMin ~ mma_dec$Ground_Lose_PerMin, alternative = 'two.sided')
+total_td_actions_tres_dec <- t.test(x = mma_dec$Total_TD_Actions_Win_PerMin, y = mma_dec$Total_TD_Actions_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+td_landed_tres_dec <- wilcoxsign_test(mma_dec$TD_Landed_Win_PerMin ~ mma_dec$TD_Landed_Lose_PerMin, alternative = 'two.sided')
+sub_att_tres_dec <- wilcoxsign_test(mma_dec$Sub_Att_Win_PerMin ~ mma_dec$Sub_Att_Lose_PerMin, alternative = 'two.sided')
+
+tres_p_vals_dec <- c(pvalue(total_strikes_tres_dec), pvalue(landed_tres_dec), pvalue(significant_tres_dec), pvalue(punch_tres_dec), kick_tres_dec$p.value,
+                pvalue(knee_tres_dec), pvalue(elbow_tres_dec), pvalue(head_tres_dec), pvalue(body_tres_dec), legs_tres_dec$p.value, 
+                pvalue(standing_tres_dec), clinch_tres_dec$p.value, pvalue(ground_tres_dec), total_td_actions_tres_dec$p.value, pvalue(td_landed_tres_dec), 
+                pvalue(sub_att_tres_dec))
+
+names(tres_p_vals_dec) <- indicators
+ 
+tres_p_vals_adj_dec <- p.adjust(tres_p_vals_dec, method = "bonferroni")
+
+#Calculating effect size. 
+
+total_strikes_eff_dec <- statistic(total_strikes_tres_dec)/sqrt(nrow(mma_dec))
+landed_eff_dec <- statistic(landed_tres_dec)/sqrt(nrow(mma_dec))
+significant_eff_dec <- statistic(significant_tres_dec)/sqrt(nrow(mma_dec))
+punch_eff_dec <- statistic(punch_tres_dec)/sqrt(nrow(mma_dec))
+kick_eff_dec <- cohensD(x = mma_dec$Kick_Win_PerMin, y = mma_dec$Kick_Lose_PerMin, method = "paired")
+
+knee_eff_dec <- statistic(knee_tres_dec)/sqrt(nrow(mma_dec))
+elbow_eff_dec <- statistic(elbow_tres_dec)/sqrt(nrow(mma_dec))
+head_eff_dec <- statistic(head_tres_dec)/sqrt(nrow(mma_dec))
+body_eff_dec <- statistic(body_tres_dec)/sqrt(nrow(mma_dec))
+legs_eff_dec <- cohensD(x = mma_dec$Legs_Win_PerMin, y = mma_dec$Legs_Lose_PerMin, method = "paired")
+
+standing_eff_dec <- statistic(standing_tres_dec)/sqrt(nrow(mma_dec))
+clinch_eff_dec <- cohensD(x = mma_dec$Clinch_Win_PerMin, y = mma_dec$Clinch_Lose_PerMin, method = "paired")
+ground_eff_dec <- statistic(ground_tres_dec)/sqrt(nrow(mma_dec))
+total_td_actions_eff_dec <- cohensD(x = mma_dec$Total_TD_Actions_Win_PerMin, y = mma_dec$Total_TD_Actions_Lose_PerMin, method = "paired")
+td_landed_eff_dec <- statistic(td_landed_tres_dec)/sqrt(nrow(mma_dec))
+sub_att_eff_dec <- statistic(sub_att_tres_dec)/sqrt(nrow(mma_dec))
+
+eff_dec <- c(total_strikes_eff_dec, landed_eff_dec, significant_eff_dec, punch_eff_dec, kick_eff_dec,
+           knee_eff_dec, elbow_eff_dec, head_eff_dec, body_eff_dec, legs_eff_dec, 
+           standing_eff_dec, clinch_eff_dec, ground_eff_dec, total_td_actions_eff_dec, td_landed_eff_dec, sub_att_eff_dec)
+
+names(eff_dec) <- indicators
+
+#Combine all results from T-Tests, Wilcoxon Tests & Effect Sizes into a table
+
+tres_eff_results_dec <- tibble(
+  indicator = indicators,
+  p_val = round(tres_p_vals_dec,3),
+  adj_p_val = round(tres_p_vals_adj_dec,3),
+  effect_size = round(eff_dec, 3)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Significant",
+                            p_val > 0.05 ~ "Non-Significant"),
+         signif_adj_p_val = case_when(
+                            adj_p_val <= 0.05 ~ "Significant",
+                            adj_p_val > 0.05 ~ "Non-Significant"),
+         test = c("Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Paired T-test",
+                  "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Paired T-test",
+                  "Wilcox Signed Rank Test", "Paired T-test", "Wilcox Signed Rank Test", "Paired T-test", "Wilcox Signed Rank Test",
+                  "Wilcox Signed Rank Test"),
+         effect_calc = c("r", "r", "r", "r", "d",
+                  "r", "r", "r", "r", "d",
+                  "r", "d", "r", "d", "r",
+                  "r")) %>%
+  select(indicator, test, p_val, signif_p_val, adj_p_val, signif_adj_p_val, effect_calc, effect_size)
+
+knitr::kable(tres_eff_results_dec,
+      format = "html",
+      digits = c(0, 0, 3, 0, 3, 0, 0, 3),
+      align = "llrlrllr",
+      col.names = c("Indicator", "Test", "p", "Result", "p", "Result", "Effect Calc", "Effect Size"),
+      caption = c("Results of Paired Samples Testing for Decision Outcomes"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  add_header_above(c(" " = 2, "Non-adjusted" = 2, "Bonferroni adjusted" = 2, " " = 2)) %>%
+  kable_styling(full_width = F)
+
+```
+
+# Comparing Winning to Losing Performances by Weight Division
+
+## Descriptive Statistics
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+sum_stats_ftw_win <- mma %>% 
+  filter(Division == "Featherweight") %>%
+  select(Total_Strikes_Win_PerMin:Sub_Att_Win_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2)),
+         Variable = str_replace_all(variable, "_Win_PerMin", "")) %>%
+  select(mean_sd) 
+  
+sum_stats_ftw_lose <- mma %>% 
+  filter(Division == "Featherweight") %>%
+  select(Total_Strikes_Lose_PerMin:Sub_Att_Lose_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+sum_stats_mw_win <- mma %>% 
+  filter(Division == "Middleweight") %>%
+  select(Total_Strikes_Win_PerMin:Sub_Att_Win_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+  
+sum_stats_mw_lose <- mma %>% 
+  filter(Division == "Middleweight") %>%
+  select(Total_Strikes_Lose_PerMin:Sub_Att_Lose_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+sum_stats_hw_win <- mma %>% 
+  filter(Division == "Heavyweight") %>%
+  select(Total_Strikes_Win_PerMin:Sub_Att_Win_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+  
+sum_stats_hw_lose <- mma %>% 
+  filter(Division == "Heavyweight") %>%
+  select(Total_Strikes_Lose_PerMin:Sub_Att_Lose_PerMin) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+
+sum_stats_win_lose_wt <- cbind(indicators, sum_stats_ftw_win, sum_stats_ftw_lose, 
+                               sum_stats_mw_win, sum_stats_mw_lose,
+                               sum_stats_hw_win, sum_stats_hw_lose)
+
+knitr::kable(sum_stats_win_lose_wt,
+      format = "html",
+      digits = c(0, 0, 0, 0, 0, 0, 0),
+      align = "lcccccc",
+      col.names = c("Indicator", "Won<br/> (n = 13)", "Lost<br/> (n = 13)", 
+                    "Won<br/> (n = 16)", "Lost<br/> (n = 16)", 
+                    "Won<br/> (n = 18)", "Lost<br/> (n = 18)"),
+      caption = c("Descriptive Statistics for Winners & Losers by Division (n = # Fighters)"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  add_header_above(c(" ", "Featherweight" = 2, "Middleweight" = 2, "Heavyweight" = 2)) %>%
+  kable_styling(full_width = F)
+```
+
+## Hypothesis Testing
+
+For each weight division, paired differences between winners' and losers' performances were calculated for each indicator. The Shapiro-Wilk test was then applied to assess if the paired differences followed the Normal distribution.
+
+Depending on the results of the Shapiro-Wilk test:
+
+-   Either a paired samples *t* test or a Wilcoxon signed rank test was applied to test for significant differences between the paired samples for each indicator.
+-   Cohen's *d* or Wilcoxon's effect size *r* were used to measure effect size.
+
+All *p* values returned from the paired samples *t* test and Wilcoxon signed rank test were adjusted using the Bonferroni correction to ensure the cumulative Type 1 error remains below 0.05.
+
+### Featherweight Division
+
+#### Shapiro-Wilk Test Results
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#Calculate paired differences
+
+mma_paired_diffs_fw <- mma %>%
+  filter(Division == "Featherweight") %>%
+  mutate(Total_Strikes_Diff = Total_Strikes_Win_PerMin - Total_Strikes_Lose_PerMin,
+         Landed_Diff = Landed_Win_PerMin - Landed_Lose_PerMin,
+         Significant_Diff = Significant_Win_PerMin - Significant_Lose_PerMin,
+         Punch_Diff = Punch_Win_PerMin - Punch_Lose_PerMin,
+         Kick_Diff = Kick_Win_PerMin - Kick_Lose_PerMin,
+         Knee_Diff = Knee_Win_PerMin - Knee_Lose_PerMin,
+         Elbow_Diff = Elbow_Win_PerMin - Elbow_Lose_PerMin,
+         Head_Diff = Head_Win_PerMin - Head_Lose_PerMin,
+         Body_Diff = Body_Win_PerMin - Body_Lose_PerMin,
+         Legs_Diff = Legs_Win_PerMin - Legs_Lose_PerMin,
+         Standing_Diff = Standing_Win_PerMin - Standing_Lose_PerMin, 
+         Clinch_Diff = Clinch_Win_PerMin - Clinch_Lose_PerMin,
+         Ground_Diff = Ground_Win_PerMin - Ground_Lose_PerMin,
+         Total_TD_Actions_Diff = Total_TD_Actions_Win_PerMin - Total_TD_Actions_Lose_PerMin,
+         TD_Landed_Diff = TD_Landed_Win_PerMin - TD_Landed_Lose_PerMin,
+         Sub_Att_Diff = Sub_Att_Win_PerMin - Sub_Att_Lose_PerMin) %>%
+  select(Total_Strikes_Diff:Sub_Att_Diff)
+
+#Apply Shapiro-Wilk Normality test to each of the paired differences
+nor_tests_fw <- lapply(mma_paired_diffs_fw, shapiro.test)
+nor_res_fw <- sapply(nor_tests_fw, `[`, c("statistic", "p.value")) #Extracting the test statistic & p-value
+
+nor_p_values_fw <- unlist(nor_res_fw[2,]) #Convert list structure to vector
+
+nor_test_results_fw <- tibble(
+  indicator = indicators,
+  p_val = round(nor_p_values_fw,2)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Non-Normal",
+                            p_val > 0.05 ~ "Normal")) %>%
+  select(indicator, p_val, signif_p_val)
+
+knitr::kable(nor_test_results_fw,
+      format = "html",
+      digits = c(0, 2, 0),
+      align = "lrlrl",
+      col.names = c("Indicator", "p", "Outcome"),
+      caption = c("Results of Shapiro-Wilk Normality Tests for Featherweight"),
+      table.attr = 'data-quarto-disable-processing = "true"') %>% 
+  kable_styling(full_width = F)
+
+```
+
+#### Paired *t* Test/Wilcoxon Signed Rank Test Results & Effect Sizes
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+
+mma_fw <- mma %>%
+  filter(Division == "Featherweight")
+
+#Carry out Paired T-test or Wilcoxon Signed Rank Test. 
+
+total_strikes_tres_fw <- wilcoxsign_test(mma_fw$Total_Strikes_Win_PerMin ~ mma_fw$Total_Strikes_Lose_PerMin, alternative = 'two.sided')
+landed_tres_fw <- wilcoxsign_test(mma_fw$Landed_Win_PerMin ~ mma_fw$Landed_Lose_PerMin, alternative = 'two.sided')
+significant_tres_fw <- wilcoxsign_test(mma_fw$Significant_Win_PerMin ~ mma_fw$Significant_Lose_PerMin, alternative = 'two.sided')
+punch_tres_fw <- wilcoxsign_test(mma_fw$Punch_Win_PerMin ~ mma_fw$Punch_Lose_PerMin, alternative = 'two.sided')
+kick_tres_fw <- t.test(x = mma_fw$Kick_Win_PerMin, y = mma_fw$Kick_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+
+knee_tres_fw <- wilcoxsign_test(mma_fw$Knee_Win_PerMin ~ mma_fw$Knee_Lose_PerMin, alternative = 'two.sided')
+elbow_tres_fw <- wilcoxsign_test(mma_fw$Elbow_Win_PerMin ~ mma_fw$Elbow_Lose_PerMin, alternative = 'two.sided')
+head_tres_fw <- t.test(x = mma_fw$Head_Win_PerMin, y = mma_fw$Head_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+body_tres_fw <- wilcoxsign_test(mma_fw$Body_Win_PerMin ~ mma_fw$Body_Lose_PerMin, alternative = 'two.sided')
+legs_tres_fw <- t.test(x = mma_fw$Legs_Win_PerMin, y = mma_fw$Legs_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+
+standing_tres_fw <- wilcoxsign_test(mma_fw$Standing_Win_PerMin ~ mma_fw$Standing_Lose_PerMin, alternative = 'two.sided')
+clinch_tres_fw <- wilcoxsign_test(mma_fw$Clinch_Win_PerMin ~ mma_fw$Clinch_Lose_PerMin, alternative = 'two.sided')
+ground_tres_fw <- wilcoxsign_test(mma_fw$Ground_Win_PerMin ~ mma_fw$Ground_Lose_PerMin, alternative = 'two.sided')
+total_td_actions_tres_fw <- wilcoxsign_test(mma_fw$Total_TD_Actions_Win_PerMin ~ mma_fw$Total_TD_Actions_Lose_PerMin, alternative = 'two.sided')
+td_landed_tres_fw <- t.test(x = mma_fw$TD_Landed_Win_PerMin, y = mma_fw$TD_Landed_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+sub_att_tres_fw <- wilcoxsign_test(mma_fw$Sub_Att_Win_PerMin ~ mma_fw$Sub_Att_Lose_PerMin, alternative = 'two.sided')
+
+
+tres_p_vals_fw <- c(pvalue(total_strikes_tres_fw), pvalue(landed_tres_fw), pvalue(significant_tres_fw), pvalue(punch_tres_fw), kick_tres_fw$p.value,
+                pvalue(knee_tres_fw), pvalue(elbow_tres_fw), head_tres_fw$p.value, pvalue(body_tres_fw), legs_tres_fw$p.value, 
+                pvalue(standing_tres_fw), pvalue(clinch_tres_fw), pvalue(ground_tres_fw), pvalue(total_td_actions_tres_fw), td_landed_tres_fw$p.value, 
+                pvalue(sub_att_tres_fw))
+
+names(tres_p_vals_fw) <- indicators
+ 
+tres_p_vals_adj_fw <- p.adjust(tres_p_vals_fw, method = "bonferroni")
+
+#Calculating effect size. 
+
+total_strikes_eff_fw <- statistic(total_strikes_tres_fw)/sqrt(nrow(mma_fw))
+landed_eff_fw <- statistic(landed_tres_fw)/sqrt(nrow(mma_fw)) 
+significant_eff_fw <- statistic(significant_tres_fw)/sqrt(nrow(mma_fw))
+punch_eff_fw <- statistic(punch_tres_fw)/sqrt(nrow(mma_fw))
+kick_eff_fw <- cohensD(x = mma_fw$Kick_Win_PerMin, y = mma_fw$Kick_Lose_PerMin, method = "paired")
+
+knee_eff_fw <- statistic(knee_tres_fw)/sqrt(nrow(mma_fw))
+elbow_eff_fw <- statistic(elbow_tres_fw)/sqrt(nrow(mma_fw))
+head_eff_fw <- cohensD(x = mma_fw$Head_Win_PerMin, y = mma_fw$Head_Lose_PerMin, method = "paired")
+body_eff_fw <- statistic(body_tres_fw)/sqrt(nrow(mma_fw))
+legs_eff_fw <- cohensD(x = mma_fw$Legs_Win_PerMin, y = mma_fw$Legs_Lose_PerMin, method = "paired")
+
+standing_eff_fw <- statistic(standing_tres_fw)/sqrt(nrow(mma_fw))
+clinch_eff_fw <- statistic(clinch_tres_fw)/sqrt(nrow(mma_fw))
+ground_eff_fw <- statistic(ground_tres_fw)/sqrt(nrow(mma_fw))
+total_td_actions_eff_fw <- statistic(total_td_actions_tres_fw)/sqrt(nrow(mma_fw))
+td_landed_eff_fw <- cohensD(x = mma_fw$TD_Landed_Win_PerMin, y = mma_fw$TD_Landed_Lose_PerMin, method = "paired")
+sub_att_eff_fw <- statistic(sub_att_tres_fw)/sqrt(nrow(mma_fw))
+
+
+eff_fw <- c(total_strikes_eff_fw, landed_eff_fw, significant_eff_fw, punch_eff_fw, kick_eff_fw,
+           knee_eff_fw, elbow_eff_fw, head_eff_fw, body_eff_fw, legs_eff_fw, 
+           standing_eff_fw, clinch_eff_fw, ground_eff_fw, total_td_actions_eff_fw, td_landed_eff_fw, sub_att_eff_fw)
+
+names(eff_fw) <- indicators
+
+#Combine all results from T-Tests, Wilcoxon Tests & Effect Sizes into a table
+
+tres_eff_results_fw <- tibble(
+  indicator = indicators,
+  p_val = round(tres_p_vals_fw,3),
+  adj_p_val = round(tres_p_vals_adj_fw,3),
+  effect_size = round(eff_fw, 3)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Significant",
+                            p_val > 0.05 ~ "Non-Significant"),
+         signif_adj_p_val = case_when(
+                            adj_p_val <= 0.05 ~ "Significant",
+                            adj_p_val > 0.05 ~ "Non-Significant"),
+         test = c("Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Paired T-test",
+                  "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Paired T-test", "Wilcox Signed Rank Test", "Paired T-test",
+                  "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Paired T-test",
+                  "Wilcox Signed Rank Test"),
+         effect_calc = c("r", "r", "r", "r", "d",
+                  "r", "r", "d", "r", "d",
+                  "r", "r", "r", "r", "d",
+                  "r")) %>%
+  select(indicator, test, p_val, signif_p_val, adj_p_val, signif_adj_p_val, effect_calc, effect_size)
+
+knitr::kable(tres_eff_results_fw,
+      format = "html",
+      digits = c(0, 0, 3, 0, 3, 0, 0, 3),
+      align = "llrlrllr",
+      col.names = c("Indicator", "Test", "p", "Result", "p", "Result", "Effect Calc", "Effect Size"),
+      caption = c("Results of Paired Samples Testing for Featherweight Division"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  add_header_above(c(" " = 2, "Non-adjusted" = 2, "Bonferroni adjusted" = 2, " " = 2)) %>%
+  kable_styling(full_width = F)
+
+```
+
+### Middleweight Division
+
+#### Shapiro-Wilk Test Results
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#Calculate paired differences
+
+mma_paired_diffs_mw <- mma %>%
+  filter(Division == "Middleweight") %>%
+  mutate(Total_Strikes_Diff = Total_Strikes_Win_PerMin - Total_Strikes_Lose_PerMin,
+         Landed_Diff = Landed_Win_PerMin - Landed_Lose_PerMin,
+         Significant_Diff = Significant_Win_PerMin - Significant_Lose_PerMin,
+         Punch_Diff = Punch_Win_PerMin - Punch_Lose_PerMin,
+         Kick_Diff = Kick_Win_PerMin - Kick_Lose_PerMin,
+         Knee_Diff = Knee_Win_PerMin - Knee_Lose_PerMin,
+         Elbow_Diff = Elbow_Win_PerMin - Elbow_Lose_PerMin,
+         Head_Diff = Head_Win_PerMin - Head_Lose_PerMin,
+         Body_Diff = Body_Win_PerMin - Body_Lose_PerMin,
+         Legs_Diff = Legs_Win_PerMin - Legs_Lose_PerMin,
+         Standing_Diff = Standing_Win_PerMin - Standing_Lose_PerMin, 
+         Clinch_Diff = Clinch_Win_PerMin - Clinch_Lose_PerMin,
+         Ground_Diff = Ground_Win_PerMin - Ground_Lose_PerMin,
+         Total_TD_Actions_Diff = Total_TD_Actions_Win_PerMin - Total_TD_Actions_Lose_PerMin,
+         TD_Landed_Diff = TD_Landed_Win_PerMin - TD_Landed_Lose_PerMin,
+         Sub_Att_Diff = Sub_Att_Win_PerMin - Sub_Att_Lose_PerMin) %>%
+  select(Total_Strikes_Diff:Sub_Att_Diff)
+
+#Apply Shapiro-Wilk Normality test to each of the paired differences
+nor_tests_mw <- lapply(mma_paired_diffs_mw, shapiro.test)
+nor_res_mw <- sapply(nor_tests_mw, `[`, c("statistic", "p.value")) #Extracting the test statistic & p-value
+
+nor_p_values_mw <- unlist(nor_res_mw[2,]) #Convert list structure to vector
+
+nor_test_results_mw <- tibble(
+  indicator = indicators,
+  p_val = round(nor_p_values_mw,2)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Non-Normal",
+                            p_val > 0.05 ~ "Normal")) %>%
+  select(indicator, p_val, signif_p_val)
+
+knitr::kable(nor_test_results_mw,
+      format = "html",
+      digits = c(0, 2, 0),
+      align = "lrlrl",
+      col.names = c("Indicator", "p", "Outcome"),
+      caption = c("Results of Shapiro-Wilk Normality Tests for Middleweight"),
+      table.attr = 'data-quarto-disable-processing = "true"') %>% 
+  kable_styling(full_width = F)
+
+```
+
+#### Paired *t* Test/Wilcoxon Signed Rank Test Results & Effect Sizes
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+
+mma_mw <- mma %>%
+  filter(Division == "Middleweight")
+
+#Carry out Paired T-test or Wilcoxon Signed Rank Test. 
+
+total_strikes_tres_mw <- t.test(x = mma_mw$Total_Strikes_Win_PerMin, y = mma_mw$Total_Strikes_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+landed_tres_mw <- t.test(x = mma_mw$Landed_Win_PerMin, y = mma_mw$Landed_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+significant_tres_mw <- t.test(x = mma_mw$Significant_Win_PerMin, y = mma_mw$Significant_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+punch_tres_mw <- t.test(x = mma_mw$Punch_Win_PerMin, y = mma_mw$Punch_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+kick_tres_mw <- t.test(x = mma_mw$Kick_Win_PerMin, y = mma_mw$Kick_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+
+knee_tres_mw <- wilcoxsign_test(mma_mw$Knee_Win_PerMin ~ mma_mw$Knee_Lose_PerMin, alternative = 'two.sided')
+elbow_tres_mw <- t.test(x = mma_mw$Elbow_Win_PerMin, y = mma_mw$Elbow_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+head_tres_mw <- t.test(x = mma_mw$Head_Win_PerMin, y = mma_mw$Head_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+body_tres_mw <- wilcoxsign_test(mma_mw$Body_Win_PerMin ~ mma_mw$Body_Lose_PerMin, alternative = 'two.sided')
+legs_tres_mw <- t.test(x = mma_mw$Legs_Win_PerMin, y = mma_mw$Legs_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+
+standing_tres_mw <- t.test(x = mma_mw$Standing_Win_PerMin, y = mma_mw$Standing_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+clinch_tres_mw <- t.test(x = mma_mw$Clinch_Win_PerMin, y = mma_mw$Clinch_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+ground_tres_mw <- wilcoxsign_test(mma_mw$Ground_Win_PerMin ~ mma_mw$Ground_Lose_PerMin, alternative = 'two.sided')
+total_td_actions_tres_mw <- t.test(x = mma_mw$Total_TD_Actions_Win_PerMin, y = mma_mw$Total_TD_Actions_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+td_landed_tres_mw <- t.test(x = mma_mw$TD_Landed_Win_PerMin, y = mma_mw$TD_Landed_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+sub_att_tres_mw <- wilcoxsign_test(mma_mw$Sub_Att_Win_PerMin ~ mma_mw$Sub_Att_Lose_PerMin, alternative = 'two.sided')
+
+tres_p_vals_mw <- c(total_strikes_tres_mw$p.value, landed_tres_mw$p.value, significant_tres_mw$p.value, punch_tres_mw$p.value, kick_tres_mw$p.value,
+                pvalue(knee_tres_mw), elbow_tres_mw$p.value, head_tres_mw$p.value, pvalue(body_tres_mw), legs_tres_mw$p.value, 
+                standing_tres_mw$p.value, clinch_tres_mw$p.value, pvalue(ground_tres_mw), total_td_actions_tres_mw$p.value, td_landed_tres_mw$p.value, 
+                pvalue(sub_att_tres_mw))
+
+names(tres_p_vals_mw) <- indicators
+ 
+tres_p_vals_adj_mw <- p.adjust(tres_p_vals_mw, method = "bonferroni")
+
+#Calculating effect size. 
+
+total_strikes_eff_mw <- cohensD(x = mma_mw$Total_Strikes_Win_PerMin, y = mma_mw$Total_Strikes_Lose_PerMin, method = "paired")
+landed_eff_mw <- cohensD(x = mma_mw$Landed_Win_PerMin, y = mma_mw$Landed_Lose_PerMin, method = "paired")
+significant_eff_mw <- cohensD(x = mma_mw$Significant_Win_PerMin, y = mma_mw$Significant_Lose_PerMin, method = "paired")
+punch_eff_mw <- cohensD(x = mma_mw$Punch_Win_PerMin, y = mma_mw$Punch_Lose_PerMin, method = "paired")
+kick_eff_mw <- cohensD(x = mma_mw$Kick_Win_PerMin, y = mma_mw$Kick_Lose_PerMin, method = "paired")
+
+knee_eff_mw <- statistic(knee_tres_mw)/sqrt(nrow(mma_mw))
+elbow_eff_mw <- cohensD(x = mma_mw$Elbow_Win_PerMin, y = mma_mw$Elbow_Lose_PerMin, method = "paired")
+head_eff_mw <- cohensD(x = mma_mw$Head_Win_PerMin, y = mma_mw$Head_Lose_PerMin, method = "paired")
+body_eff_mw <- statistic(body_tres_mw)/sqrt(nrow(mma_mw))
+legs_eff_mw <- cohensD(x = mma_mw$Legs_Win_PerMin, y = mma_mw$Legs_Lose_PerMin, method = "paired")
+
+standing_eff_mw <- cohensD(x = mma_mw$Standing_Win_PerMin, y = mma_mw$Standing_Lose_PerMin, method = "paired")
+clinch_eff_mw <- cohensD(x = mma_mw$Clinch_Win_PerMin, y = mma_mw$Clinch_Lose_PerMin, method = "paired")
+ground_eff_mw <- statistic(ground_tres_mw)/sqrt(nrow(mma_mw))
+total_td_actions_eff_mw <- cohensD(x = mma_mw$Total_TD_Actions_Win_PerMin, y = mma_mw$Total_TD_Actions_Lose_PerMin, method = "paired")
+td_landed_eff_mw <- cohensD(x = mma_mw$TD_Landed_Win_PerMin, y = mma_mw$TD_Landed_Lose_PerMin, method = "paired")
+sub_att_eff_mw <- statistic(sub_att_tres_mw)/sqrt(nrow(mma_mw))
+
+
+eff_mw <- c(total_strikes_eff_mw, landed_eff_mw, significant_eff_mw, punch_eff_mw, kick_eff_mw,
+           knee_eff_mw, elbow_eff_mw, head_eff_mw, body_eff_mw, legs_eff_mw, 
+           standing_eff_mw, clinch_eff_mw, ground_eff_mw, total_td_actions_eff_mw, td_landed_eff_mw, sub_att_eff_mw)
+
+names(eff_mw) <- indicators
+
+#Combine all results from T-Tests, Wilcoxon Tests & Effect Sizes into a table
+
+tres_eff_results_mw <- tibble(
+  indicator = indicators,
+  p_val = round(tres_p_vals_mw,3),
+  adj_p_val = round(tres_p_vals_adj_mw,3),
+  effect_size = round(eff_mw, 3)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Significant",
+                            p_val > 0.05 ~ "Non-Significant"),
+         signif_adj_p_val = case_when(
+                            adj_p_val <= 0.05 ~ "Significant",
+                            adj_p_val > 0.05 ~ "Non-Significant"),
+         test = c("Paired T-test", "Paired T-test", "Paired T-test", "Paired T-test", "Paired T-test",
+                  "Wilcox Signed Rank Test", "Paired T-test", "Paired T-test", "Wilcox Signed Rank Test", "Paired T-test",
+                  "Paired T-test", "Paired T-test", "Wilcox Signed Rank Test", "Paired T-test", "Paired T-test",
+                  "Wilcox Signed Rank Test"),
+         effect_calc = c("d", "d", "d", "d", "d",
+                  "r", "d", "d", "r", "d",
+                  "d", "d", "r", "d", "d",
+                  "r")) %>%
+  select(indicator, test, p_val, signif_p_val, adj_p_val, signif_adj_p_val, effect_calc, effect_size)
+
+knitr::kable(tres_eff_results_mw,
+      format = "html",
+      digits = c(0, 0, 3, 0, 3, 0, 0, 3),
+      align = "llrlrllr",
+      col.names = c("Indicator", "Test", "p", "Result", "p", "Result", "Effect Calc", "Effect Size"),
+      caption = c("Results of Paired Samples Testing for Middleweight Division"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  add_header_above(c(" " = 2, "Non-adjusted" = 2, "Bonferroni adjusted" = 2, " " = 2)) %>%
+  kable_styling(full_width = F)
+
+```
+
+### Heavyweight Division
+
+#### Shapiro-Wilk Test Results
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#Calculate paired differences
+
+mma_paired_diffs_hw <- mma %>%
+  filter(Division == "Heavyweight") %>%
+  mutate(Total_Strikes_Diff = Total_Strikes_Win_PerMin - Total_Strikes_Lose_PerMin,
+         Landed_Diff = Landed_Win_PerMin - Landed_Lose_PerMin,
+         Significant_Diff = Significant_Win_PerMin - Significant_Lose_PerMin,
+         Punch_Diff = Punch_Win_PerMin - Punch_Lose_PerMin,
+         Kick_Diff = Kick_Win_PerMin - Kick_Lose_PerMin,
+         Knee_Diff = Knee_Win_PerMin - Knee_Lose_PerMin,
+         Elbow_Diff = Elbow_Win_PerMin - Elbow_Lose_PerMin,
+         Head_Diff = Head_Win_PerMin - Head_Lose_PerMin,
+         Body_Diff = Body_Win_PerMin - Body_Lose_PerMin,
+         Legs_Diff = Legs_Win_PerMin - Legs_Lose_PerMin,
+         Standing_Diff = Standing_Win_PerMin - Standing_Lose_PerMin, 
+         Clinch_Diff = Clinch_Win_PerMin - Clinch_Lose_PerMin,
+         Ground_Diff = Ground_Win_PerMin - Ground_Lose_PerMin,
+         Total_TD_Actions_Diff = Total_TD_Actions_Win_PerMin - Total_TD_Actions_Lose_PerMin,
+         TD_Landed_Diff = TD_Landed_Win_PerMin - TD_Landed_Lose_PerMin,
+         Sub_Att_Diff = Sub_Att_Win_PerMin - Sub_Att_Lose_PerMin) %>%
+  select(Total_Strikes_Diff:Sub_Att_Diff)
+
+#Apply Shapiro-Wilk Normality test to each of the paired differences
+nor_tests_hw <- lapply(mma_paired_diffs_hw, shapiro.test)
+nor_res_hw <- sapply(nor_tests_hw, `[`, c("statistic", "p.value")) #Extracting the test statistic & p-value
+
+nor_p_values_hw <- unlist(nor_res_hw[2,]) #Convert list structure to vector
+
+nor_test_results_hw <- tibble(
+  indicator = indicators,
+  p_val = round(nor_p_values_hw,2)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Non-Normal",
+                            p_val > 0.05 ~ "Normal")) %>%
+  select(indicator, p_val, signif_p_val)
+
+knitr::kable(nor_test_results_hw,
+      format = "html",
+      digits = c(0, 2, 0),
+      align = "lrlrl",
+      col.names = c("Indicator", "p", "Outcome"),
+      caption = c("Results of Shapiro-Wilk Normality Tests for Heavyweight Division"),
+      table.attr = 'data-quarto-disable-processing = "true"') %>% 
+  kable_styling(full_width = F)
+
+```
+
+#### T-Test/Wilcoxon Signed Rank Test Results & Effect Sizes
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+
+mma_hw <- mma %>%
+  filter(Division == "Heavyweight")
+
+#Carry out Paired T-test or Wilcoxon Signed Rank Test. 
+
+total_strikes_tres_hw <- t.test(x = mma_hw$Total_Strikes_Win_PerMin, y = mma_hw$Total_Strikes_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+landed_tres_hw <- t.test(x = mma_hw$Landed_Win_PerMin, y = mma_hw$Landed_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+significant_tres_hw <- t.test(x = mma_hw$Significant_Win_PerMin, y = mma_hw$Significant_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+punch_tres_hw <- t.test(x = mma_hw$Punch_Win_PerMin, y = mma_hw$Punch_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+kick_tres_hw <- t.test(x = mma_hw$Kick_Win_PerMin, y = mma_hw$Kick_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+
+knee_tres_hw <-  t.test(x = mma_hw$Knee_Win_PerMin, y = mma_hw$Knee_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+elbow_tres_hw <- wilcoxsign_test(mma_hw$Elbow_Win_PerMin ~ mma_hw$Elbow_Lose_PerMin, alternative = 'two.sided')
+head_tres_hw <- t.test(x = mma_hw$Head_Win_PerMin, y = mma_hw$Head_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+body_tres_hw <- wilcoxsign_test(mma_hw$Body_Win_PerMin ~ mma_hw$Body_Lose_PerMin, alternative = 'two.sided')
+legs_tres_hw <- t.test(x = mma_hw$Legs_Win_PerMin, y = mma_hw$Legs_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+
+standing_tres_hw <- t.test(x = mma_hw$Standing_Win_PerMin, y = mma_hw$Standing_Lose_PerMin, alternative = 'two.sided', paired = TRUE)
+clinch_tres_hw <- wilcoxsign_test(mma_hw$Clinch_Win_PerMin ~ mma_hw$Clinch_Lose_PerMin, alternative = 'two.sided')
+ground_tres_hw <- wilcoxsign_test(mma_hw$Ground_Win_PerMin ~ mma_hw$Ground_Lose_PerMin, alternative = 'two.sided')
+total_td_actions_tres_hw <- wilcoxsign_test(mma_hw$Total_TD_Actions_Win_PerMin ~ mma_hw$Total_TD_Actions_Lose_PerMin, alternative = 'two.sided')
+td_landed_tres_hw <-wilcoxsign_test(mma_hw$TD_Landed_Win_PerMin ~ mma_hw$TD_Landed_Lose_PerMin, alternative = 'two.sided')
+sub_att_tres_hw <- wilcoxsign_test(mma_hw$Sub_Att_Win_PerMin ~ mma_hw$Sub_Att_Lose_PerMin, alternative = 'two.sided')
+
+tres_p_vals_hw <- c(total_strikes_tres_hw$p.value, landed_tres_hw$p.value, significant_tres_hw$p.value, punch_tres_hw$p.value, kick_tres_hw$p.value,
+                knee_tres_hw$p.value, pvalue(elbow_tres_hw), head_tres_hw$p.value, pvalue(body_tres_hw), legs_tres_hw$p.value, 
+                standing_tres_hw$p.value, pvalue(clinch_tres_hw), pvalue(ground_tres_hw), pvalue(total_td_actions_tres_hw), pvalue(td_landed_tres_hw), 
+                pvalue(sub_att_tres_hw))
+
+names(tres_p_vals_hw) <- indicators
+ 
+tres_p_vals_adj_hw <- p.adjust(tres_p_vals_hw, method = "bonferroni")
+
+#Calculating effect size. 
+
+total_strikes_eff_hw <- cohensD(x = mma_hw$Total_Strikes_Win_PerMin, y = mma_hw$Total_Strikes_Lose_PerMin, method = "paired")
+landed_eff_hw <- cohensD(x = mma_hw$Landed_Win_PerMin, y = mma_hw$Landed_Lose_PerMin, method = "paired")
+significant_eff_hw <- cohensD(x = mma_hw$Significant_Win_PerMin, y = mma_hw$Significant_Lose_PerMin, method = "paired")
+punch_eff_hw <- cohensD(x = mma_hw$Punch_Win_PerMin, y = mma_hw$Punch_Lose_PerMin, method = "paired")
+kick_eff_hw <- cohensD(x = mma_hw$Kick_Win_PerMin, y = mma_hw$Kick_Lose_PerMin, method = "paired")
+
+knee_eff_hw <- cohensD(x = mma_hw$Knee_Win_PerMin, y = mma_hw$Knee_Lose_PerMin, method = "paired")
+elbow_eff_hw <- statistic(elbow_tres_hw)/sqrt(nrow(mma_hw))
+head_eff_hw <- cohensD(x = mma_hw$Head_Win_PerMin, y = mma_hw$Head_Lose_PerMin, method = "paired")
+body_eff_hw <- statistic(body_tres_hw)/sqrt(nrow(mma_hw))
+legs_eff_hw <- cohensD(x = mma_hw$Legs_Win_PerMin, y = mma_hw$Legs_Lose_PerMin, method = "paired")
+
+standing_eff_hw <- cohensD(x = mma_hw$Standing_Win_PerMin, y = mma_hw$Standing_Lose_PerMin, method = "paired")
+clinch_eff_hw <- statistic(clinch_tres_hw)/sqrt(nrow(mma_hw))
+ground_eff_hw <- statistic(ground_tres_hw)/sqrt(nrow(mma_hw))
+total_td_actions_eff_hw <- statistic(total_td_actions_tres_hw)/sqrt(nrow(mma_hw))
+td_landed_eff_hw <- statistic(td_landed_tres_hw)/sqrt(nrow(mma_hw))
+sub_att_eff_hw <- statistic(sub_att_tres_hw)/sqrt(nrow(mma_hw))
+
+eff_hw <- c(total_strikes_eff_hw, landed_eff_hw, significant_eff_hw, punch_eff_hw, kick_eff_hw,
+           knee_eff_hw, elbow_eff_hw, head_eff_hw, body_eff_hw, legs_eff_hw, 
+           standing_eff_hw, clinch_eff_hw, ground_eff_hw, total_td_actions_eff_hw, td_landed_eff_hw, sub_att_eff_hw)
+
+names(eff_hw) <- indicators
+
+#Combine all results from T-Tests, Wilcoxon Tests & Effect Sizes into a table
+
+tres_eff_results_hw <- tibble(
+  indicator = indicators,
+  p_val = round(tres_p_vals_hw,3),
+  adj_p_val = round(tres_p_vals_adj_hw,3),
+  effect_size = round(eff_hw, 3)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Significant",
+                            p_val > 0.05 ~ "Non-Significant"),
+         signif_adj_p_val = case_when(
+                            adj_p_val <= 0.05 ~ "Significant",
+                            adj_p_val > 0.05 ~ "Non-Significant"),
+         test = c("Paired T-test", "Paired T-test", "Paired T-test", "Paired T-test", "Paired T-test",
+                  "Paired T-test", "Wilcox Signed Rank Test", "Paired T-test", "Wilcox Signed Rank Test", "Paired T-test",
+                  "Paired T-test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test", "Wilcox Signed Rank Test",
+                  "Wilcox Signed Rank Test"),
+         effect_calc = c("d", "d", "d", "d", "d",
+                  "d", "r", "d", "r", "d",
+                  "d", "r", "r", "r", "d",
+                  "r")) %>%
+  select(indicator, test, p_val, signif_p_val, adj_p_val, signif_adj_p_val, effect_calc, effect_size)
+
+knitr::kable(tres_eff_results_hw,
+      format = "html",
+      digits = c(0, 0, 3, 0, 3, 0, 0, 3),
+      align = "llrlrllr",
+      col.names = c("Indicator", "Test", "p", "Result", "p", "Result", "Effect Calc", "Effect Size"),
+      caption = c("Results of Paired Samples Testing for Heavyweight Division"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  add_header_above(c(" " = 2, "Non-adjusted" = 2, "Bonferroni adjusted" = 2, " " = 2)) %>%
+  kable_styling(full_width = F)
+
+
+```
+
+# Comparing Relative Indicators by Fight Outcomes
+
+For each fight outcome, relative indicators are calculated by subtracting the loser's performance from the winner's performance. For example, Rel. Total Strikes Attempted is calculated as total strikes for the winner minus total strikes for the loser. Therefore, a positive value for Rel. Total Strikes Attempted means the winner had more total strikes than the loser.
+
+## Descriptive Statistics
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+rel_stats_finish <- mma_paired_diffs %>% 
+  filter(Outcome == "Finish") %>%
+  select(-Outcome) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+rel_stats_decision <- mma_paired_diffs %>% 
+  filter(Outcome == "Decision") %>%
+  select(-Outcome) %>%
+  get_summary_stats(type = "mean_sd") %>%
+  mutate(mean_sd = str_c(format(round(mean, 2), nsmall = 2), paste0("\u00b1"), format(round(sd, 2), nsmall = 2))) %>%
+  select(mean_sd) 
+
+rel_indicators <- str_c("Rel.", " ", indicators)
+
+rel_stats <- cbind(rel_indicators, rel_stats_finish, rel_stats_decision)
+
+knitr::kable(rel_stats,
+      format = "html",
+      digits = c(0, 0, 0),
+      align = "lcc",
+      col.names = c("Indicator", "Finish<br/> (n = 20)", "Decision<br/> (n = 27)"),
+      caption = c("Descriptive Statistics for Relative Indicators By Fight Outcome (n = # Fights)"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  kable_styling(full_width = F) 
+```
+
+## Hypothesis Testing
+
+The Shapiro-Wilk test was applied to each individual relative indicator for each fight outcome to assess if the samples followed the Normal distribution. Levene's test was applied to each pair of corresponding relative indicators for each fight outcome to assess whether or not the samples had equal variances.
+
+Depending on the results of the Shapiro-Wilk test & Levene's test:
+
+-   Either an independent samples *t* test (without or without equal variances assumed, according to the results of Levene's test) or the Mann-Whitney *U* test was applied to test for significant differences between each pair of corresponding relative indicators for each fight outcome.
+-   Cohen's *d* or Wilcoxon's effect size *r* were used to measure effect size.
+
+All *p* values returned from the independent samples *t* test and Mann-Whitney *U* test were adjusted using the Bonferroni correction to ensure the cumulative Type 1 error remains below 0.05.
+
+### Shapiro-Wilk Test & Levene's Test Results
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+#Apply Shapiro-Wilk Normality test to each of the variables for the Finish sample
+mma_paired_diffs_fin <- mma_paired_diffs %>%
+  filter(Outcome == "Finish") %>%
+  select(-Outcome)
+
+nor_tests_diffs_fin <- lapply(mma_paired_diffs_fin, shapiro.test)
+nor_res_diffs_fin <- sapply(nor_tests_diffs_fin, `[`, c("statistic", "p.value")) #Extracting the test statistic & p-value
+
+nor_p_values_diffs_fin <- unlist(nor_res_diffs_fin[2,]) #Convert list structure to vector
+
+#Apply Shapiro-Wilk Normality test to each of the variables for the Decision sample
+mma_paired_diffs_dec <- mma_paired_diffs %>%
+  filter(Outcome == "Decision") %>%
+  select(-Outcome)
+
+nor_tests_diffs_dec <- lapply(mma_paired_diffs_dec, shapiro.test)
+nor_res_diffs_dec <- sapply(nor_tests_diffs_dec, `[`, c("statistic", "p.value")) #Extracting the test statistic & p-value
+
+nor_p_values_diffs_dec <- unlist(nor_res_diffs_dec[2,]) #Convert list structure to vector
+
+#Levene's Test of Equal Variances
+levene_test_res <- sapply(select(mma_paired_diffs, Total_Strikes_Diff:Sub_Att_Diff),
+                          function(x) leveneTest(x, group = mma_paired_diffs$Outcome, center = 'mean')$'Pr(>F)'[1])
+
+
+#Combine results from Shapiro-Wilk & Levene's Tests & Determine Suitable Test
+sw_lt_res <- tibble(
+  indicator = rel_indicators,
+  p_sw_fin = round(nor_p_values_diffs_fin, 3),
+  p_sw_dec = round(nor_p_values_diffs_dec, 3),
+  p_lt = round(levene_test_res, 2)) %>%
+  mutate(sw_res = case_when(p_sw_fin > 0.05 & p_sw_dec > 0.05 ~ "Normal",
+                            TRUE ~ "Non-Normal"),
+         lt_res = case_when(p_lt > 0.05 ~ "Equal Variances",
+                            TRUE ~ "Non Equal Variances")) %>%
+  mutate(test = case_when(sw_res == "Normal" & lt_res == "Equal Variances" ~ "Ind Samples T-test",
+                          sw_res == "Normal" & lt_res == "Non Equal Variances" ~ "Ind Samples T-Test Adapted Version",
+                          TRUE ~ "Mann-Whitney Test")) %>%
+  select(indicator, p_sw_fin, p_sw_dec, sw_res, p_lt, lt_res, test)
+
+knitr::kable(sw_lt_res,
+      format = "html",
+      digits = c(0, 2, 2, 0, 2, 0, 0),
+      align = "lrrlrll",
+      col.names = c("Indicators", "p - SW - Finish Sample", "p - SW - Decision Sample", "Normal Dist?", "LW", "Equal Variances?", "Correct Test"),
+      caption = c("Results of Shapiro-Wilk & Levene's Test for Finish & Decision Samples"),
+      table.attr = 'data-quarto-disable-processing = "true"') %>% 
+  kable_styling(full_width = F)
+
+```
+
+### Independent *t* Test/Mann Whitney *U* Test Results & Effect Sizes
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+
+#Carry out Independent Samples T-Tests and Mann-Whitney U Tests
+
+total_strikes_tres_out <- wilcox_test(Total_Strikes_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+landed_tres_out <- wilcox_test(Landed_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+significant_tres_out <- wilcox_test(Significant_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+punch_tres_out <- wilcox_test(Punch_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+kick_tres_out <- t.test(Kick_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided', var.equal = TRUE)
+
+knee_tres_out <- wilcox_test(Knee_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+elbow_tres_out <- wilcox_test(Elbow_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+head_tres_out <- wilcox_test(Head_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+body_tres_out <- wilcox_test(Body_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+legs_tres_out <- t.test(Legs_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided', var.equal = TRUE)
+
+standing_tres_out <- wilcox_test(Standing_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+clinch_tres_out <- wilcox_test(Clinch_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+ground_tres_out <- wilcox_test(Ground_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+total_td_actions_tres_out <- t.test(Total_TD_Actions_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided', var.equal = TRUE)
+td_landed_tres_out <- wilcox_test(TD_Landed_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+sub_att_tres_out <- wilcox_test(Sub_Att_Diff ~ Outcome, data = mma_paired_diffs, alternative = 'two.sided')
+
+
+tres_p_vals_out <- c(pvalue(total_strikes_tres_out), pvalue(landed_tres_out), pvalue(significant_tres_out), pvalue(punch_tres_out), kick_tres_out$p.value,
+                pvalue(knee_tres_out), pvalue(elbow_tres_out), pvalue(head_tres_out), pvalue(body_tres_out), legs_tres_out$p.value,
+                pvalue(standing_tres_out), pvalue(clinch_tres_out), pvalue(ground_tres_out), total_td_actions_tres_out$p.value, pvalue(td_landed_tres_out),
+                pvalue(sub_att_tres_out))
+
+names(tres_p_vals_out) <- rel_indicators
+
+tres_p_vals_adj_out <- p.adjust(tres_p_vals_out, method = "bonferroni")
+
+#Calculating effect size.
+
+total_strikes_eff_out <- statistic(total_strikes_tres_out)/sqrt(nrow(mma_paired_diffs))
+landed_eff_out <- statistic(landed_tres_out)/sqrt(nrow(mma_paired_diffs))
+significant_eff_out <- statistic(significant_tres_out)/sqrt(nrow(mma_paired_diffs))
+punch_eff_out <- statistic(punch_tres_out)/sqrt(nrow(mma_paired_diffs))
+kick_eff_out <- cohensD(Knee_Diff ~ Outcome, data = mma_paired_diffs)
+
+knee_eff_out <- statistic(knee_tres_out)/sqrt(nrow(mma_paired_diffs))
+elbow_eff_out <- statistic(elbow_tres_out)/sqrt(nrow(mma_paired_diffs))
+head_eff_out <- statistic(head_tres_out)/sqrt(nrow(mma_paired_diffs))
+body_eff_out <- statistic(body_tres_out)/sqrt(nrow(mma_paired_diffs))
+legs_eff_out <- cohensD(Legs_Diff ~ Outcome, data = mma_paired_diffs)
+
+standing_eff_out <- statistic(standing_tres_out)/sqrt(nrow(mma_paired_diffs))
+clinch_eff_out <- statistic(clinch_tres_out)/sqrt(nrow(mma_paired_diffs))
+ground_eff_out <- statistic(ground_tres_out)/sqrt(nrow(mma_paired_diffs))
+total_td_actions_eff_out <- cohensD(Total_TD_Actions_Diff ~ Outcome, data = mma_paired_diffs)
+td_landed_eff_out <- statistic(td_landed_tres_out)/sqrt(nrow(mma_paired_diffs))
+sub_att_eff_out <- statistic(sub_att_tres_out)/sqrt(nrow(mma_paired_diffs))
+
+
+eff_out <- c(total_strikes_eff_out, landed_eff_out, significant_eff_out, punch_eff_out, kick_eff_out,
+           knee_eff_out, elbow_eff_out, head_eff_out, body_eff_out, legs_eff_out, 
+           standing_eff_out, clinch_eff_out, ground_eff_out, total_td_actions_eff_out, td_landed_eff_out, 
+           sub_att_eff_out)
+
+names(eff_out) <- rel_indicators
+
+#Combine all results into the one table.
+
+tres_eff_results_out <- tibble(
+  indicator = rel_indicators,
+  p_val = round(tres_p_vals_out,3),
+  adj_p_val = round(tres_p_vals_adj_out,3),
+  effect_size = round(eff_out, 3)) %>%
+  mutate(signif_p_val = case_when(
+                            p_val <= 0.05 ~ "Significant",
+                            p_val > 0.05 ~ "Non-Significant"),
+         signif_adj_p_val = case_when(
+                            adj_p_val <= 0.05 ~ "Significant",
+                            adj_p_val > 0.05 ~ "Non-Significant"),
+         test = c("Mann Whitney", "Mann Whitney", "Mann Whitney", "Mann Whitney", "Ind T-test",
+                  "Mann Whitney", "Mann Whitney", "Mann Whitney", "Mann Whitney", "Ind T-test",
+                  "Mann Whitney", "Mann Whitney", "Mann Whitney", "Ind T-test", "Mann Whitney",
+                  "Mann Whitney"),
+         effect_calc = c("r", "r", "r", "r", "d",
+                  "r", "r", "r", "r", "d",
+                  "r", "r", "r", "d", "r",
+                  "r")) %>%
+  select(indicator, test, p_val, signif_p_val, adj_p_val, signif_adj_p_val, effect_calc, effect_size)
+
+knitr::kable(tres_eff_results_out,
+      format = "html",
+      digits = c(0, 0, 3, 0, 3, 0, 0, 3),
+      align = "llrlrllr",
+      col.names = c("Indicator", "Test", "p", "Result", "p", "Result", "Effect Calc", "Effect Size"),
+      caption = c("Results of Independent Samples Testing for Finish vs Decision Fights"),
+      table.attr = 'data-quarto-disable-processing = "true"',
+      escape = FALSE) %>% 
+  add_header_above(c(" " = 2, "Non-adjusted" = 2, "Bonferroni adjusted" = 2, " " = 2)) %>%
+  kable_styling(full_width = F)
+
+```
+
+# References
+
+1. Hughes, M. (2004). Performance analysis–a 2004 perspective. *International Journal of Performance Analysis in Sport*, 4(1), 103-109.  
+
+2. Cooper, S.-M., Hughes, M., O’Donoghue, P., & Nevill, M. A. (2007). A simple statistical method for assessing the reliability of data entered into sport performance analysis systems. *International Journal of Performance Analysis in Sport, 7(1)*, 87–109.
+
+3. James, L. P., Robertson, S., Haff, G. G., Beckman, E. M., & Kelly, V. G. (2017). Identifying the performance characteristics of a winning outcome in elite mixed martial arts competition. *Journal of Science and Medicine in Sport*, 20(3), 296–301.
+
+4. R Core Team (2024). *R: A Language and Environment for Statistical Computing*. R Foundation for Statistical Computing, Vienna, Austria. URL <https://www.R-project.org/>
+
+5. Posit team (2023). *RStudio: Integrated Development Environment for R. Posit Software*, PBC, Boston, MA. URL <http://www.posit.co/>
+
+6. Rosenthal, R. (1991). *Meta-analytic procedures for social research* (2nd ed.). Newbury Park, Ca: Sage.
+
+7. Cohen J. (1992). A power primer. *Psychological Bulletin, 112(1)*, 155-159.
+
+8. Cohen, J. (1988). *Statistical Power Analysis for the Behavioral Sciences* (2nd ed.). New York: Academic Press.
+
+
+
+
